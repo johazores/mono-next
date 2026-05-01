@@ -17,7 +17,7 @@
     "dev": "npx concurrently -n client,server -c blue,green \"npx pnpm --prefix app-client dev\" \"npx pnpm --prefix app-api dev\"",
     "build:client": "npx pnpm --prefix app-client build",
     "build:server": "npx pnpm --prefix app-api build",
-    "build": "npx pnpm run build:app-api && npx pnpm run build:client"
+    "build": "npx pnpm run build:server && npx pnpm run build:client"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",
