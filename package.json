@@ -1,0 +1,41 @@
+{
+  "name": "mono-next",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mono repo for Next.js applications",
+  "author": {
+    "name": "Johanssen Azores",
+    "email": "johanss.zip@gmail.com"
+  },
+  "scripts": {
+    "prepare": "npx pnpm exec husky install",
+    "format": "npx prettier --write --ignore-unknown \"app-client/**/*.{js,jsx,ts,tsx,css,md,mdx,yml,yaml}\" \"app-api/**/*.{js,jsx,ts,tsx,css,md,mdx,yml,yaml}\"",
+    "install:apps": "npx pnpm install --prefix app-client && npx pnpm install --prefix app-api",
+    "postinstall": "npx pnpm run install:apps",
+    "dev:client": "npx pnpm --prefix app-client dev",
+    "dev:server": "npx pnpm --prefix app-api dev",
+    "dev": "npx concurrently -n client,server -c blue,green \"npx pnpm --prefix app-client dev\" \"npx pnpm --prefix app-api dev\"",
+    "build:client": "npx pnpm --prefix app-client build",
+    "build:server": "npx pnpm --prefix app-api build",
+    "build": "npx pnpm run build:app-api && npx pnpm run build:client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.3.3"
+  },
+  "lint-staged": {
+    "app-client/**/*.{js,jsx,ts,tsx,css,md,mdx,yml,yaml}": [
+      "prettier --write"
+    ],
+    "app-api/**/*.{js,jsx,ts,tsx,css,md,mdx,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^4.3.6"
+  },
+  "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
+}
