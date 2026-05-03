@@ -1,6 +1,6 @@
 # app-client
 
-Frontend application built with Next.js (App Router) + Tailwind CSS.
+Admin panel frontend built with Next.js (App Router) + Tailwind CSS.
 
 ## Setup
 
@@ -22,9 +22,28 @@ NEXT_PUBLIC_API_URL=http://localhost:7001
 ## Structure
 
 ```
-app/             → Pages (App Router)
+app/
+  (admin)/         Protected admin pages (dashboard, admins)
+  (public)/        Public pages (login)
 components/
-  admin/         → ResourceManager, AdminModal
-hooks/           → useAdminResource
-services/        → API client, resource service
+  admin/           ResourceManager, ResourceEditor, ResourceList, FieldRenderer
+  layout/          AdminShell (sidebar navigation, auth info, logout)
+  ui/              Button, Modal, Notice, StatusBadge
+hooks/             useAdminResource (polling data hook)
+services/          API client, auth service, resource service
+types/             ApiResult, ResourceField, ResourceItem
 ```
+
+## Authentication
+
+The admin layout (`(admin)/layout.tsx`) checks authentication on mount by
+calling `/api/auth/me`. Unauthenticated visitors are redirected to `/login`.
+All API requests include `credentials: "include"` for cookie passthrough.
+
+## Pages
+
+| Path      | Description                          |
+| --------- | ------------------------------------ |
+| `/`       | Dashboard (protected)                |
+| `/admins` | Admin account management (protected) |
+| `/login`  | Login form (public)                  |

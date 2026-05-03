@@ -5,7 +5,7 @@
 Monorepo with two independent Next.js applications sharing a common architecture philosophy:
 
 - **`app-api`** — Backend API server (port 7001)
-- **`app-client`** — Frontend application (port 7000)
+- **`app-client`** — Admin panel frontend (port 7000)
 
 Both apps are managed from the root with `pnpm` and `concurrently`.
 
@@ -14,15 +14,15 @@ Both apps are managed from the root with `pnpm` and `concurrently`.
 ## Request Flow
 
 ```
-Client UI → api-client.ts → fetch() → /api/[resource]
-                                            ↓
-                                     Controller (HTTP layer)
-                                            ↓
-                                     Service (business logic)
-                                            ↓
-                                     Repository (data access)
-                                            ↓
-                                     Prisma → MongoDB
+Client UI -> api-client.ts -> fetch() -> /api/[resource]
+                                              |
+                                       Controller (HTTP layer)
+                                              |
+                                       Service (business logic)
+                                              |
+                                       Repository (data access)
+                                              |
+                                       Prisma -> MongoDB
 ```
 
 ---
@@ -33,16 +33,16 @@ Client UI → api-client.ts → fetch() → /api/[resource]
 
 ```
 app-api/
-├── pages/api/         ← Thin route files (1–3 lines, delegates to controller)
-├── controllers/       ← HTTP method routing, auth gating, response formatting
-├── services/          ← Business logic, validation, data transformation
-├── repositories/      ← Pure data access (Prisma queries only)
-├── types/             ← Shared type definitions (barrel-exported via index.ts)
-│   ├── auth.ts        ← Role, AuthUser, AuthSession
-│   ├── user.ts        ← UserRecord, CreateUserInput, UpdateUserInput
-│   └── response.ts    ← ApiResponse<T>, ListResponse<T>
-├── lib/               ← Cross-cutting utilities (auth, password, prisma, response)
-└── prisma/            ← Schema + seed scripts
+├── pages/api/         <- Thin route files (1-3 lines, delegates to controller)
+├── controllers/       <- HTTP method routing, auth gating, response formatting
+├── services/          <- Business logic, validation, data transformation
+├── repositories/      <- Pure data access (Prisma queries only)
+├── types/             <- Shared type definitions (barrel-exported via index.ts)
+│   ├── auth.ts        <- Role, AuthUser, AuthSession
+│   ├── admin.ts       <- AdminRecord, CreateAdminInput, UpdateAdminInput
+│   └── response.ts    <- ApiResponse<T>, ListResponse<T>
+├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials)
+└── prisma/            <- Schema + seed scripts
 ```
 
 ### Layer Responsibilities
@@ -59,14 +59,18 @@ app-api/
 - **Uniform response envelope**: All responses use `{ ok: true, data }` or `{ ok: false, error }`
 - **Singleton pattern**: Repository/service objects exported as plain object literals (not classes)
 - **Password security**: PBKDF2 with 120k iterations, SHA-512, 64-byte key, timing-safe comparison
-- **Auth guard**: `requireAdmin()` validates the `Authorization` header and enforces role-based access
+- **Auth guard**: `requireAdmin()` validates the session cookie and enforces role-based access
+- **Cookie-based sessions**: HMAC-SHA256 hashed tokens stored in `AdminSession` collection
 - **Prisma singleton**: `globalThis` caching prevents connection leaks during hot reload
 
 ### Database
 
 - **Provider**: MongoDB (via Prisma)
 - **IDs**: Auto-generated ObjectId mapped to `_id`
-- **Current models**: `User`
+- **Collections**:
+  - `Admin` — CMS admin accounts (name, email, passwordHash, role, status)
+  - `AdminSession` — Auth sessions (adminId, tokenHash, expiresAt)
+  - `User` — Application users (reserved for future app-level features)
 - **Schema location**: `app-api/prisma/schema.prisma`
 
 ---
@@ -78,18 +82,22 @@ app-api/
 ```
 app-client/
 ├── app/               ← Next.js App Router pages
-│   ├── layout.tsx     ← Root layout (wraps AdminShell)
-│   ├── page.tsx       ← Dashboard
-│   └── users/         ← User management page
+│   ├── (admin)/       <- Protected admin pages (auth guard in layout)
+│   │   ├── layout.tsx <- Auth check, redirects to /login if unauthenticated
+│   │   ├── page.tsx   <- Dashboard
+│   │   └── admins/    <- Admin account management
+│   └── (public)/      <- Public pages
+│       ├── layout.tsx <- Minimal layout
+│       └── login/     <- Login form
 ├── components/
-│   ├── ui/            ← Reusable primitives (Button, Modal, Notice, StatusBadge)
-│   ├── layout/        ← App shells (AdminShell with sidebar nav)
-│   └── admin/         ← Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer)
-├── hooks/             ← Custom React hooks (useAdminResource)
-├── services/          ← API client layer (api-client, resource-service)
-└── types/             ← Shared type definitions (barrel-exported via index.ts)
-    ├── api.ts         ← ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
-    └── resource.ts    ← ResourceField, ResourceItem, FieldType, EditorSection
+│   ├── ui/            <- Reusable primitives (Button, Modal, Notice, StatusBadge)
+│   ├── layout/        <- App shells (AdminShell with sidebar nav + logout)
+│   └── admin/         <- Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer)
+├── hooks/             <- Custom React hooks (useAdminResource)
+├── services/          <- API client layer (api-client, auth-service, resource-service)
+└── types/             <- Shared type definitions (barrel-exported via index.ts)
+    ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
+    └── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection
 ```
 
 ### Key Patterns
@@ -107,13 +115,13 @@ app-client/
 
 ```
 UI Component
-    ↓ calls
-resourceService.list("/api/users")
-    ↓ calls
-apiGet("/api/users")
-    ↓ calls
-fetch(`${NEXT_PUBLIC_API_URL}/api/users`)
-    ↓ parses
+    | calls
+resourceService.list("/api/admins")
+    | calls
+apiGet("/api/admins")
+    | calls
+fetch(`${NEXT_PUBLIC_API_URL}/api/admins`, { credentials: "include" })
+    | parses
 { ok: true, data: { items: [...] } }
 ```
 

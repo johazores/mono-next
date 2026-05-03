@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
-export const userRepository = {
+export const adminRepository = {
   list() {
-    return prisma.user.findMany({
+    return prisma.admin.findMany({
       orderBy: [{ role: "asc" }, { name: "asc" }],
       select: {
         id: true,
@@ -18,7 +18,7 @@ export const userRepository = {
     });
   },
   findById(id: string) {
-    return prisma.user.findUnique({
+    return prisma.admin.findUnique({
       where: { id },
       select: {
         id: true,
@@ -33,15 +33,15 @@ export const userRepository = {
     });
   },
   findByEmailWithPassword(email: string) {
-    return prisma.user.findUnique({
+    return prisma.admin.findUnique({
       where: { email: email.toLowerCase().trim() },
     });
   },
   count() {
-    return prisma.user.count();
+    return prisma.admin.count();
   },
   countAdmins(exceptId?: string) {
-    return prisma.user.count({
+    return prisma.admin.count({
       where: {
         role: "admin",
         status: "active",
@@ -49,17 +49,18 @@ export const userRepository = {
       },
     });
   },
-  create(data: Prisma.UserCreateInput) {
-    return prisma.user.create({ data });
+  create(data: Prisma.AdminCreateInput) {
+    return prisma.admin.create({ data });
   },
-  update(id: string, data: Prisma.UserUpdateInput) {
-    return prisma.user.update({ where: { id }, data });
+  update(id: string, data: Prisma.AdminUpdateInput) {
+    return prisma.admin.update({ where: { id }, data });
   },
-  delete(id: string) {
-    return prisma.user.delete({ where: { id } });
+  async delete(id: string) {
+    await prisma.adminSession.deleteMany({ where: { adminId: id } });
+    return prisma.admin.delete({ where: { id } });
   },
   touchLastLogin(id: string) {
-    return prisma.user.update({
+    return prisma.admin.update({
       where: { id },
       data: { lastLoginAt: new Date() },
     });

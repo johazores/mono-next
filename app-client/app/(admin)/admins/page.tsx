@@ -3,7 +3,7 @@
 import { ResourceManager } from "@/components/admin";
 import type { ResourceField, ResourceItem } from "@/types";
 
-const userFields: ResourceField[] = [
+const adminFields: ResourceField[] = [
   { name: "name", label: "Name", type: "text" },
   { name: "email", label: "Email", type: "text" },
   {
@@ -21,7 +21,7 @@ const userFields: ResourceField[] = [
   },
 ];
 
-const emptyUser: ResourceItem = {
+const emptyAdmin: ResourceItem = {
   name: "",
   email: "",
   password: "",
@@ -29,15 +29,15 @@ const emptyUser: ResourceItem = {
   status: "active",
 };
 
-export default function UsersPage() {
+export default function AdminsPage() {
   return (
     <ResourceManager
-      title="Users"
-      endpoint="/api/users"
-      fields={userFields}
+      title="Admins"
+      endpoint="/api/admins"
+      fields={adminFields}
       getTitle={(item) => String(item.name || item.email)}
       getSubtitle={(item) => `${item.role} · ${item.email}`}
-      emptyItem={emptyUser}
+      emptyItem={emptyAdmin}
     />
   );
 }

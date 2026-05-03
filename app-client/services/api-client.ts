@@ -30,6 +30,7 @@ export async function apiRequest<T = unknown>(
   const request: RequestInit = {
     ...requestOptions,
     headers,
+    credentials: "include",
   };
 
   if (body !== undefined) {

@@ -2,13 +2,13 @@ import { prisma } from "../lib/prisma";
 import { hashPassword } from "../lib/password";
 
 async function main() {
-  const count = await prisma.user.count();
+  const count = await prisma.admin.count();
   if (count > 0) {
-    console.log("Users already exist, skipping seed.");
+    console.log("Admins already exist, skipping seed.");
     return;
   }
 
-  const user = await prisma.user.create({
+  const admin = await prisma.admin.create({
     data: {
       name: "Admin",
       email: "admin@admin.com",
@@ -18,7 +18,7 @@ async function main() {
     },
   });
 
-  console.log("Default admin user created:", user.email);
+  console.log("Default admin created:", admin.email);
 }
 
 main()

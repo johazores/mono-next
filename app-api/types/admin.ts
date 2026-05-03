@@ -1,4 +1,4 @@
-export type UserRecord = {
+export type AdminRecord = {
   id: string;
   name: string;
   email: string;
@@ -9,7 +9,7 @@ export type UserRecord = {
   updatedAt: Date;
 };
 
-export type CreateUserInput = {
+export type CreateAdminInput = {
   name: string;
   email: string;
   password: string;
@@ -17,7 +17,7 @@ export type CreateUserInput = {
   status?: string;
 };
 
-export type UpdateUserInput = {
+export type UpdateAdminInput = {
   name?: string;
   email?: string;
   password?: string;

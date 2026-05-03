@@ -9,5 +9,5 @@ export type AuthUser = {
 };
 
 export type AuthSession = {
-  user: AuthUser;
+  admin: AuthUser;
 };
