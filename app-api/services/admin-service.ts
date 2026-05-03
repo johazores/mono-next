@@ -4,6 +4,7 @@ import type {
   AdminRecord,
   CreateAdminInput,
   UpdateAdminInput,
+  UpdateAdminProfileInput,
   Role,
   AccountStatus,
 } from "@/types";
@@ -116,5 +117,35 @@ export const adminService = {
 
     const deleted = await adminRepository.delete(id);
     return safeAdmin(deleted);
+  },
+
+  async updateProfile(
+    id: string,
+    input: UpdateAdminProfileInput,
+  ): Promise<AdminRecord | null> {
+    const current = await adminRepository.findByIdWithPassword(id);
+    if (!current) throw new Error("Admin not found.");
+
+    const data: Record<string, unknown> = {};
+
+    if (input.name) {
+      const name = input.name.trim();
+      if (name.length < 2 || name.length > 100)
+        throw new Error("Name must be between 2 and 100 characters.");
+      data.name = name;
+    }
+
+    if (input.newPassword) {
+      if (!input.currentPassword)
+        throw new Error("Current password is required to set a new password.");
+      if (!verifyPassword(input.currentPassword, current.passwordHash))
+        throw new Error("Current password is incorrect.");
+      data.passwordHash = hashPassword(input.newPassword);
+    }
+
+    if (Object.keys(data).length === 0) throw new Error("No fields to update.");
+
+    const admin = await adminRepository.update(id, data);
+    return safeAdmin(admin);
   },
 };

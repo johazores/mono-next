@@ -26,3 +26,9 @@ export type UpdateAdminInput = {
   role?: Role;
   status?: AccountStatus;
 };
+
+export type UpdateAdminProfileInput = {
+  name?: string;
+  currentPassword?: string;
+  newPassword?: string;
+};

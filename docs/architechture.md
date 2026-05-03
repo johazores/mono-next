@@ -5,7 +5,7 @@
 Monorepo with two independent Next.js applications sharing a common architecture philosophy:
 
 - **`app-api`** — Backend API server (port 7001)
-- **`app-client`** — Admin panel frontend (port 7000)
+- **`app-client`** — Frontend with admin panel, user dashboard, and public landing (port 7000)
 
 Both apps are managed from the root with `pnpm` and `concurrently`.
 
@@ -39,10 +39,11 @@ app-api/
 ├── repositories/      <- Pure data access (Prisma queries only)
 ├── types/             <- Shared type definitions (barrel-exported via index.ts)
 │   ├── auth.ts        <- Role, AccountStatus, AuthUser, AuthSession (admin auth)
-│   ├── admin.ts       <- AdminRecord, CreateAdminInput, UpdateAdminInput
-│   ├── user.ts        <- UserRecord, UserAuthSession, SubscriptionPlan, AccountStatus
+│   ├── admin.ts       <- AdminRecord, CreateAdminInput, UpdateAdminInput, UpdateAdminProfileInput
+│   ├── user.ts        <- UserRecord, UserAuthSession, SubscriptionPlan, UpdateUserProfileInput
+│   ├── activity-log.ts <- ActivityAction, ActivityActor, ActivityLogRecord, ActivityLogFilter
 │   └── response.ts    <- ApiResponse<T>, ListResponse<T>
-├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials)
+├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger)
 └── prisma/            <- Schema + seed scripts
 ```
 
@@ -61,7 +62,10 @@ app-api/
 - **Singleton pattern**: Repository/service objects exported as plain object literals (not classes)
 - **Password security**: PBKDF2 with 120k iterations, SHA-512, 64-byte key, timing-safe comparison
 - **Auth guard**: `requireAdmin()` for admin routes, `requireUser()` for user routes
+- **Rate limiting**: In-memory sliding window limiter per IP (admin login: 5/15min, user login: 10/15min)
+- **Activity logging**: Fire-and-forget audit trail via `logActivity()` — never breaks main request
 - **Dual cookie-based sessions**: Separate `admin_session` (7d) and `user_session` (30d) cookies
+- **Secure admin URLs**: Admin auth endpoints served from `/api/panel/*` (non-predictable path)
 - **Subscription model**: Users have plan (free/starter/pro/enterprise), subscriptionId, subscriptionEnds
 - **Prisma singleton**: `globalThis` caching prevents connection leaks during hot reload
 
@@ -74,6 +78,7 @@ app-api/
   - `AdminSession` — Admin auth sessions (adminId, tokenHash, expiresAt)
   - `User` — Application users (name, email, passwordHash, plan, subscription)
   - `UserSession` — User auth sessions (userId, tokenHash, expiresAt)
+  - `ActivityLog` — Audit trail (actor, actorId, actorEmail, action, resource, resourceId, metadata, ip)
 - **Schema location**: `app-api/prisma/schema.prisma`
 
 ---
@@ -85,19 +90,30 @@ app-api/
 ```
 app-client/
 ├── app/               ← Next.js App Router pages
+│   ├── page.tsx       <- Public landing page with navigation links
 │   ├── (admin)/       <- Protected admin pages (auth guard in layout)
 │   │   ├── layout.tsx <- Auth check, redirects to /login if unauthenticated
-│   │   ├── page.tsx   <- Dashboard
-│   │   └── admins/    <- Admin account management
+│   │   └── admin/     <- All admin pages under /admin/* prefix
+│   │       ├── page.tsx   <- Dashboard (/admin)
+│   │       ├── admins/    <- Admin account management (/admin/admins)
+│   │       ├── users/     <- User management (/admin/users)
+│   │       ├── activity/  <- Activity log viewer (/admin/activity)
+│   │       └── profile/   <- Admin profile management (/admin/profile)
+│   ├── (user)/        <- Protected user pages (auth guard in layout)
+│   │   ├── layout.tsx <- Auth check, redirects to /user-login
+│   │   ├── dashboard/ <- User dashboard
+│   │   └── account/   <- Profile edit, password change, subscription info
 │   └── (public)/      <- Public pages
 │       ├── layout.tsx <- Minimal layout
-│       └── login/     <- Login form
+│       ├── login/     <- Admin login form
+│       ├── user-login/ <- User login form
+│       └── user-register/ <- User registration form
 ├── components/
 │   ├── ui/            <- Reusable primitives (Button, Modal, Notice, StatusBadge)
 │   ├── layout/        <- App shells (AdminShell with sidebar nav + logout)
 │   └── admin/         <- Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer)
 ├── hooks/             <- Custom React hooks (useAdminResource)
-├── services/          <- API client layer (api-client, auth-service, resource-service)
+├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, activity-log-service)
 └── types/             <- Shared type definitions (barrel-exported via index.ts)
     ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
     └── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection

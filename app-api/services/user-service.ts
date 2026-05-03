@@ -4,6 +4,7 @@ import type {
   UserRecord,
   CreateUserInput,
   UpdateUserInput,
+  UpdateUserProfileInput,
   SubscriptionPlan,
   AccountStatus,
 } from "@/types";
@@ -119,5 +120,45 @@ export const userService = {
 
     const deleted = await userRepository.delete(id);
     return safeUser(deleted);
+  },
+
+  async updateProfile(
+    id: string,
+    input: UpdateUserProfileInput,
+  ): Promise<UserRecord | null> {
+    const current = await userRepository.findByIdWithPassword(id);
+    if (!current) throw new Error("User not found.");
+
+    const data: Record<string, unknown> = {};
+
+    if (input.name) {
+      const name = input.name.trim();
+      if (name.length < 2 || name.length > 100)
+        throw new Error("Name must be between 2 and 100 characters.");
+      data.name = name;
+    }
+
+    if (input.email) {
+      const email = cleanEmail(input.email);
+      if (!email) throw new Error("Invalid email address.");
+      if (email !== current.email) {
+        const existing = await userRepository.findByEmailWithPassword(email);
+        if (existing) throw new Error("Email is already in use.");
+        data.email = email;
+      }
+    }
+
+    if (input.newPassword) {
+      if (!input.currentPassword)
+        throw new Error("Current password is required to set a new password.");
+      if (!verifyPassword(input.currentPassword, current.passwordHash))
+        throw new Error("Current password is incorrect.");
+      data.passwordHash = hashPassword(input.newPassword);
+    }
+
+    if (Object.keys(data).length === 0) throw new Error("No fields to update.");
+
+    const user = await userRepository.update(id, data);
+    return safeUser(user);
   },
 };

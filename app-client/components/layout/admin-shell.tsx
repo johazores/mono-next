@@ -11,9 +11,11 @@ type NavItem = {
 };
 
 const navigation: NavItem[] = [
-  { label: "Dashboard", href: "/" },
-  { label: "Users", href: "/users" },
-  { label: "Admins", href: "/admins" },
+  { label: "Dashboard", href: "/admin" },
+  { label: "Users", href: "/admin/users" },
+  { label: "Admins", href: "/admin/admins" },
+  { label: "Activity", href: "/admin/activity" },
+  { label: "Profile", href: "/admin/profile" },
 ];
 
 export function AdminShell({
@@ -40,7 +42,10 @@ export function AdminShell({
         <nav className="flex-1 px-4">
           <ul className="grid gap-1">
             {navigation.map((item) => {
-              const active = pathname === item.href;
+              const active =
+                item.href === "/admin"
+                  ? pathname === "/admin"
+                  : pathname.startsWith(item.href);
               return (
                 <li key={item.href}>
                   <Link

@@ -1,4 +1,4 @@
-import { apiPost, apiGet } from "./api-client";
+import { apiPost, apiGet, apiPut } from "./api-client";
 
 export type AuthUser = {
   id: string;
@@ -8,14 +8,26 @@ export type AuthUser = {
   status: string;
 };
 
+export type UpdateAdminProfileInput = {
+  name?: string;
+  currentPassword?: string;
+  newPassword?: string;
+};
+
 export const authService = {
   async login(email: string, password: string) {
-    return apiPost<AuthUser>("/api/auth/login", { email, password });
+    return apiPost<AuthUser>("/api/panel/login", { email, password });
   },
   async logout() {
-    return apiPost("/api/auth/logout");
+    return apiPost("/api/panel/logout");
   },
   async me() {
-    return apiGet<AuthUser>("/api/auth/me");
+    return apiGet<AuthUser>("/api/panel/me");
+  },
+  async getProfile() {
+    return apiGet<AuthUser>("/api/panel/profile");
+  },
+  async updateProfile(input: UpdateAdminProfileInput) {
+    return apiPut<AuthUser>("/api/panel/profile", input);
   },
 };

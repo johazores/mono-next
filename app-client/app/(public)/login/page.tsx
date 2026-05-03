@@ -18,7 +18,7 @@ export default function LoginPage() {
 
     try {
       await authService.login(email, password);
-      router.push("/");
+      router.push("/admin");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {

@@ -24,15 +24,16 @@ NEXT_PUBLIC_API_URL=http://localhost:7001
 
 ```
 app/
-  (admin)/         Protected admin pages (dashboard, users, admins)
-  (user)/          Protected user pages (dashboard, account)
-  (public)/        Public pages (login, user-login, user-register)
+  page.tsx           Public landing page with navigation links
+  (admin)/admin/     Protected admin pages (dashboard, users, admins, activity, profile)
+  (user)/            Protected user pages (dashboard, account)
+  (public)/          Public pages (login, user-login, user-register)
 components/
   admin/           ResourceManager, ResourceEditor, ResourceList, FieldRenderer
   layout/          AdminShell, UserShell (sidebar navigation, auth info, logout)
   ui/              Button, Modal, Notice, StatusBadge
 hooks/             useAdminResource (polling data hook)
-services/          API client, auth service, user auth service, resource service
+services/          API client, auth service, user auth service, resource service, activity log service
 types/             ApiResult, ResourceField, ResourceItem
 ```
 
@@ -40,7 +41,7 @@ types/             ApiResult, ResourceField, ResourceItem
 
 Two separate auth guards protect different route groups:
 
-- **Admin** (`(admin)/layout.tsx`): Checks `/api/auth/me`. Redirects to `/login`.
+- **Admin** (`(admin)/layout.tsx`): Checks `/api/panel/me`. Redirects to `/login`.
 - **User** (`(user)/layout.tsx`): Checks `/api/users/auth/me`. Redirects to `/user-login`.
 
 All API requests include `credentials: "include"` for cookie passthrough.
@@ -49,18 +50,20 @@ All API requests include `credentials: "include"` for cookie passthrough.
 
 ### Admin Panel
 
-| Path      | Description                          |
-| --------- | ------------------------------------ |
-| `/`       | Admin dashboard (protected)          |
-| `/users`  | User management (protected)          |
-| `/admins` | Admin account management (protected) |
-| `/login`  | Admin login form (public)            |
+| Path              | Description                          |
+| ----------------- | ------------------------------------ |
+| `/admin`          | Admin dashboard (protected)          |
+| `/admin/users`    | User management (protected)          |
+| `/admin/admins`   | Admin account management (protected) |
+| `/admin/activity` | Activity log viewer (protected)      |
+| `/admin/profile`  | Admin profile management (protected) |
+| `/login`          | Admin login form (public)            |
 
 ### User Dashboard
 
-| Path             | Description                        |
-| ---------------- | ---------------------------------- |
-| `/dashboard`     | User dashboard (protected)         |
-| `/account`       | User account and subscription info |
-| `/user-login`    | User login form (public)           |
-| `/user-register` | User registration form (public)    |
+| Path             | Description                                 |
+| ---------------- | ------------------------------------------- |
+| `/dashboard`     | User dashboard (protected)                  |
+| `/account`       | Profile edit, password change, subscription |
+| `/user-login`    | User login form (public)                    |
+| `/user-register` | User registration form (public)             |

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "@/lib/admin-auth";
 import { sendError, sendOk } from "@/lib/api-response";
 import { adminService } from "@/services/admin-service";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function adminCollectionController(
   req: NextApiRequest,
@@ -19,6 +20,11 @@ export async function adminCollectionController(
       return sendOk(res, { items: await adminService.list() });
     if (req.method === "POST") {
       const admin = await adminService.create(req.body);
+      await logActivity(req, "admin.create", {
+        resource: "admin",
+        resourceId: admin?.id,
+        metadata: { email: admin?.email },
+      });
       return sendOk(res, admin, 201);
     }
 
@@ -52,11 +58,21 @@ export async function adminItemController(
 
     if (req.method === "PUT") {
       const admin = await adminService.update(id, req.body);
+      await logActivity(req, "admin.update", {
+        resource: "admin",
+        resourceId: id,
+        metadata: { fields: Object.keys(req.body || {}) },
+      });
       return sendOk(res, admin);
     }
 
     if (req.method === "DELETE") {
       const admin = await adminService.delete(id);
+      await logActivity(req, "admin.delete", {
+        resource: "admin",
+        resourceId: id,
+        metadata: { email: admin?.email },
+      });
       return sendOk(res, admin);
     }
 

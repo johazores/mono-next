@@ -32,6 +32,13 @@ export type UpdateUserInput = {
   subscriptionEnds?: string;
 };
 
+export type UpdateUserProfileInput = {
+  name?: string;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
+};
+
 export type UserAuthSession = {
   user: {
     id: string;

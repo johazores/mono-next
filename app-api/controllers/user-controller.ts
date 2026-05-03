@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "@/lib/admin-auth";
 import { sendError, sendOk } from "@/lib/api-response";
 import { userService } from "@/services/user-service";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function userCollectionController(
   req: NextApiRequest,
@@ -19,6 +20,11 @@ export async function userCollectionController(
       return sendOk(res, { items: await userService.list() });
     if (req.method === "POST") {
       const user = await userService.register(req.body);
+      await logActivity(req, "user.create", {
+        resource: "user",
+        resourceId: user?.id,
+        metadata: { email: user?.email },
+      });
       return sendOk(res, user, 201);
     }
 
@@ -52,11 +58,21 @@ export async function userItemController(
 
     if (req.method === "PUT") {
       const user = await userService.update(id, req.body);
+      await logActivity(req, "user.update", {
+        resource: "user",
+        resourceId: id,
+        metadata: { fields: Object.keys(req.body || {}) },
+      });
       return sendOk(res, user);
     }
 
     if (req.method === "DELETE") {
       const user = await userService.delete(id);
+      await logActivity(req, "user.delete", {
+        resource: "user",
+        resourceId: id,
+        metadata: { email: user?.email },
+      });
       return sendOk(res, user);
     }
 

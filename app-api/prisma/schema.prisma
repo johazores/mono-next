@@ -54,3 +54,16 @@ model AdminSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model ActivityLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  actor      String // "admin" | "user" | "system"
+  actorId    String?  @db.ObjectId
+  actorEmail String?
+  action     String // e.g. "admin.login", "user.register", "admin.create"
+  resource   String? // e.g. "admin", "user", "profile"
+  resourceId String?  @db.ObjectId
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+}

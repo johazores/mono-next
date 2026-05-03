@@ -2,22 +2,14 @@
 
 import { useEffect, useState } from "react";
 import {
-  userAuthService,
-  type AppUser,
-  type UpdateUserProfileInput,
-} from "@/services/user-auth-service";
+  authService,
+  type AuthUser,
+  type UpdateAdminProfileInput,
+} from "@/services/auth-service";
 
-const planLabel: Record<string, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  enterprise: "Enterprise",
-};
-
-export default function AccountPage() {
-  const [user, setUser] = useState<AppUser | null>(null);
+export default function ProfilePage() {
+  const [admin, setAdmin] = useState<AuthUser | null>(null);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -27,11 +19,10 @@ export default function AccountPage() {
   } | null>(null);
 
   useEffect(() => {
-    userAuthService.getProfile().then((res) => {
+    authService.getProfile().then((res) => {
       if (res.ok && res.data) {
-        setUser(res.data);
+        setAdmin(res.data);
         setName(res.data.name);
-        setEmail(res.data.email);
       }
     });
   }, []);
@@ -41,9 +32,8 @@ export default function AccountPage() {
     setSaving(true);
     setMessage(null);
 
-    const input: UpdateUserProfileInput = {};
-    if (name !== user?.name) input.name = name;
-    if (email !== user?.email) input.email = email;
+    const input: UpdateAdminProfileInput = {};
+    if (name !== admin?.name) input.name = name;
 
     if (Object.keys(input).length === 0) {
       setMessage({ type: "error", text: "No changes to save." });
@@ -52,9 +42,9 @@ export default function AccountPage() {
     }
 
     try {
-      const res = await userAuthService.updateProfile(input);
+      const res = await authService.updateProfile(input);
       if (res.ok && res.data) {
-        setUser(res.data);
+        setAdmin(res.data);
         setMessage({ type: "success", text: "Profile updated." });
       }
     } catch (err) {
@@ -82,7 +72,7 @@ export default function AccountPage() {
     }
 
     try {
-      const res = await userAuthService.updateProfile({
+      const res = await authService.updateProfile({
         currentPassword,
         newPassword,
       });
@@ -101,7 +91,7 @@ export default function AccountPage() {
     }
   }
 
-  if (!user) {
+  if (!admin) {
     return (
       <div className="flex items-center justify-center py-12">
         <p className="text-sm text-gray-400">Loading&hellip;</p>
@@ -112,10 +102,8 @@ export default function AccountPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Account</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage your profile and subscription details.
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+        <p className="mt-1 text-sm text-gray-600">Manage your admin profile.</p>
       </div>
 
       {message && (
@@ -132,7 +120,7 @@ export default function AccountPage() {
 
       {/* Profile */}
       <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Details</h2>
         <form onSubmit={handleProfileSave} className="mt-4 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -151,9 +139,23 @@ export default function AccountPage() {
             </label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              value={admin.email}
+              disabled
+              className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Admin email cannot be changed from here.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Role
+            </label>
+            <input
+              type="text"
+              value={admin.role}
+              disabled
+              className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm capitalize text-gray-500"
             />
           </div>
           <button
@@ -200,30 +202,6 @@ export default function AccountPage() {
             {saving ? "Updating\u2026" : "Update Password"}
           </button>
         </form>
-      </section>
-
-      {/* Subscription */}
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Subscription</h2>
-
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Current Plan</dt>
-            <dd className="mt-1">
-              <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                {planLabel[user.plan] ?? user.plan}
-              </span>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Renews</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {user.subscriptionEnds
-                ? new Date(user.subscriptionEnds).toLocaleDateString()
-                : "N/A"}
-            </dd>
-          </div>
-        </dl>
       </section>
     </div>
   );

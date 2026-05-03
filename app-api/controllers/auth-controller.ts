@@ -6,6 +6,14 @@ import {
   getAuthSession,
 } from "@/lib/admin-auth";
 import { adminService } from "@/services/admin-service";
+import { checkRateLimit, ADMIN_LOGIN_LIMIT } from "@/lib/rate-limiter";
+import { logActivity } from "@/lib/activity-logger";
+
+function getIp(req: NextApiRequest): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
+  return req.socket?.remoteAddress ?? "unknown";
+}
 
 export async function loginController(
   req: NextApiRequest,
@@ -20,14 +28,46 @@ export async function loginController(
     return;
   }
 
+  const ip = getIp(req);
+  const limit = checkRateLimit(ip, "admin.login", ADMIN_LOGIN_LIMIT);
+  if (!limit.allowed) {
+    res.setHeader(
+      "Retry-After",
+      String(Math.ceil((limit.resetAt.getTime() - Date.now()) / 1000)),
+    );
+    sendError(res, "Too many login attempts. Please try again later.", 429);
+    return;
+  }
+
+  const { email, password } = req.body ?? {};
+
+  if (
+    !email ||
+    typeof email !== "string" ||
+    !password ||
+    typeof password !== "string"
+  ) {
+    sendError(res, "Email and password are required.", 400);
+    return;
+  }
+
   try {
-    const { email, password } = req.body ?? {};
     const admin = await adminService.authenticate(email, password);
     await createAdminSession(admin.id, res);
+    await logActivity(req, "admin.login", {
+      actor: "admin",
+      actorId: admin.id,
+      actorEmail: admin.email,
+      resource: "admin",
+      resourceId: admin.id,
+    });
     sendOk(res, admin);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Login failed.";
-    sendError(res, message, 401);
+    await logActivity(req, "admin.login_failed", {
+      actor: "system",
+      metadata: { email: String(email).toLowerCase().trim() },
+    });
+    sendError(res, "Invalid email or password.", 401);
   }
 }
 
@@ -44,6 +84,7 @@ export async function logoutController(
     return;
   }
 
+  await logActivity(req, "admin.logout", { resource: "admin" });
   await clearAdminSession(req, res);
   sendOk(res, null);
 }

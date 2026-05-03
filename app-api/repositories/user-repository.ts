@@ -32,6 +32,9 @@ export const userRepository = {
       where: { email: email.toLowerCase().trim() },
     });
   },
+  findByIdWithPassword(id: string) {
+    return prisma.user.findUnique({ where: { id } });
+  },
   count() {
     return prisma.user.count();
   },

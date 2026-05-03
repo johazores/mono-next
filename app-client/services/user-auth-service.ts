@@ -1,4 +1,4 @@
-import { apiPost, apiGet } from "./api-client";
+import { apiPost, apiGet, apiPut } from "./api-client";
 
 export type AppUser = {
   id: string;
@@ -7,6 +7,13 @@ export type AppUser = {
   status: string;
   plan: string;
   subscriptionEnds: string | null;
+};
+
+export type UpdateUserProfileInput = {
+  name?: string;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
 };
 
 export const userAuthService = {
@@ -25,5 +32,11 @@ export const userAuthService = {
   },
   async me() {
     return apiGet<AppUser>("/api/users/auth/me");
+  },
+  async getProfile() {
+    return apiGet<AppUser>("/api/users/auth/profile");
+  },
+  async updateProfile(input: UpdateUserProfileInput) {
+    return apiPut<AppUser>("/api/users/auth/profile", input);
   },
 };

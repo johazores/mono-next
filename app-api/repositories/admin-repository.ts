@@ -37,6 +37,9 @@ export const adminRepository = {
       where: { email: email.toLowerCase().trim() },
     });
   },
+  findByIdWithPassword(id: string) {
+    return prisma.admin.findUnique({ where: { id } });
+  },
   count() {
     return prisma.admin.count();
   },
