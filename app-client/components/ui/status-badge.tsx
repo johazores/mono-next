@@ -1,6 +1,4 @@
-type StatusBadgeProps = {
-  status: string;
-};
+import type { StatusBadgeProps } from "@/types";
 
 const statusStyles: Record<string, string> = {
   active: "bg-green-50 text-green-700",

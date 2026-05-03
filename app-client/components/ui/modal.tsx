@@ -1,15 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
-
-type ModalProps = {
-  title: string;
-  subtitle?: string;
-  onClose: () => void;
-  children: ReactNode;
-  footer: ReactNode;
-};
+import type { ModalProps } from "@/types";
 
 export function Modal({
   title,

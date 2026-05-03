@@ -1,15 +1,6 @@
-import type { ResourceItem } from "@/types";
+import type { ResourceListProps } from "@/types";
 import { Button } from "@/components/ui";
 import { StatusBadge } from "@/components/ui";
-
-type ResourceListProps = {
-  items: ResourceItem[];
-  loading: boolean;
-  getTitle: (item: ResourceItem) => string;
-  getSubtitle?: (item: ResourceItem) => string;
-  onEdit: (item: ResourceItem) => void;
-  onDelete: (item: ResourceItem) => void;
-};
 
 export function ResourceList({
   items,

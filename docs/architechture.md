@@ -47,6 +47,7 @@ app-api/
 │   ├── feature.ts     <- FeatureRecord, FeatureDefinition, FeatureCheckResult
 │   ├── report.ts      <- RevenueSummary, SubscriptionStats, PurchaseStats, UserStats, UserActivityReport
 │   ├── activity-log.ts <- ActivityAction, ActivityActor, ActivityLogRecord, ActivityLogFilter
+│   ├── rate-limiter.ts <- RateLimitEntry, RateLimitConfig, RateLimitResult
 │   └── response.ts    <- ApiResponse<T>, ListResponse<T>
 ├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf, request-utils)
 └── prisma/            <- Schema + seed scripts
@@ -84,15 +85,16 @@ app-api/
 - **Provider**: MongoDB (via Prisma)
 - **IDs**: Auto-generated ObjectId mapped to `_id`
 - **Collections**:
-  - `Admin` — CMS admin accounts (name, email, passwordHash, role, status, failedLoginAttempts, lockedUntil)
-  - `AdminSession` — Admin auth sessions (adminId, tokenHash, expiresAt)
-  - `User` — Application users (name, email, passwordHash, status, parentId, ancestors, failedLoginAttempts, lockedUntil)
-  - `UserSession` — User auth sessions (userId, tokenHash, expiresAt)
-  - `Product` — Purchasable items (name, slug, description, type, price, currency, paymentModel, interval, maxSubUsers, fileUrl, accessKeys, isActive, sortOrder)
-  - `Purchase` — User purchases and subscriptions (userId, productId, status, amount, currency, externalId, startDate, endDate, cancelledAt, metadata)
-  - `Membership` — Feature access grants from purchases (userId, type, sourceId, featureKeys, status, expiresAt)
+  - `Admin` — CMS admin accounts (name, email, passwordHash, role, status, failedLoginAttempts, lockedUntil, lastLoginAt)
+  - `AdminSession` — Admin auth sessions (adminId -> Admin, tokenHash, expiresAt)
+  - `User` — Application users (name, email, passwordHash, status, parentId -> User, ancestors, failedLoginAttempts, lockedUntil, lastLoginAt)
+  - `UserSession` — User auth sessions (userId -> User, tokenHash, expiresAt)
+  - `Product` — Purchasable items (name, slug, description, type, price, currency, paymentModel, interval, maxSubUsers, fileUrl, accessKeys, metadata, isActive, sortOrder)
+  - `Purchase` — User purchases and subscriptions (userId -> User, productId -> Product, status, amount, currency, externalId, startDate, endDate, cancelledAt, metadata)
+  - `Membership` — Feature access grants from purchases (userId -> User, type, sourceId, featureKeys, status, expiresAt)
   - `Feature` — Feature definitions (key, description, category, isActive, sortOrder)
-  - `ActivityLog` — Audit trail (actor, actorId, actorEmail, action, resource, resourceId, metadata, ip, userAgent, method, path)
+  - `ActivityLog` — Audit trail (actor, actorId, actorEmail, action, resource, resourceId, metadata, ip, userAgent, method, path, createdAt)
+  - All models include `createdAt` (auto-set) and `updatedAt` (auto-managed by Prisma), except `ActivityLog` which only has `createdAt`
 - **Schema location**: `app-api/prisma/schema.prisma`
 
 ---
@@ -136,7 +138,9 @@ app-client/
 ├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, feature-service, sub-user-service, purchase-service, report-service, activity-log-service)
 └── types/             <- Shared type definitions (barrel-exported via index.ts)
     ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
-    ├── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection
+    ├── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection, FieldRendererProps, DynamicOption, ResourceManagerProps, ResourceEditorProps, ResourceListProps
+    ├── ui.ts          <- ButtonVariant, ButtonProps, StatusBadgeProps, NoticeProps, ModalProps, NavItem
+    ├── hooks.ts       <- FeaturesState, AdminResourceState<T>
     ├── auth.ts        <- AuthUser, UpdateAdminProfileInput
     ├── user.ts        <- AppUser, UpdateUserProfileInput
     ├── sub-user.ts    <- SubUser, CreateSubUserInput
@@ -189,11 +193,11 @@ fetch(`${NEXT_PUBLIC_API_URL}/api/admins`, { credentials: "include" })
 
 ### API-specific
 
-| Command            | Description                                   |
-| ------------------ | --------------------------------------------- |
-| `pnpm prisma:push` | Push schema to MongoDB                        |
-| `pnpm db:seed`     | Seed admin, demo user, products, and features |
-| `pnpm setup`       | Full install + push + seed                    |
+| Command            | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| `pnpm prisma:push` | Push schema to MongoDB                                  |
+| `pnpm db:seed`     | Seed admin, demo user, sub-user, products, and features |
+| `pnpm setup`       | Full install + push + seed                              |
 
 ---
 
@@ -210,6 +214,49 @@ DATABASE_URL=mongodb://localhost:27017/mono-next
 ```
 NEXT_PUBLIC_API_URL=http://localhost:7001
 ```
+
+---
+
+## Coding Rules
+
+These rules apply to all code across both applications. Follow them when adding or modifying code.
+
+### Type Centralization
+
+**All type definitions (`type`, `interface`, `enum`) must live in the `types/` directory of their respective app.** Never define types inline in services, controllers, repositories, lib files, components, hooks, or pages.
+
+| App          | Types location      | Barrel export               |
+| ------------ | ------------------- | --------------------------- |
+| `app-api`    | `app-api/types/`    | `app-api/types/index.ts`    |
+| `app-client` | `app-client/types/` | `app-client/types/index.ts` |
+
+**When adding a new type:**
+
+1. Create or extend the appropriate file in `types/` (group by domain: `user.ts`, `product.ts`, `ui.ts`, etc.)
+2. Add the export to `types/index.ts`
+3. Import from `@/types` everywhere else
+
+**What belongs in `types/`:**
+
+- Domain models (e.g. `UserRecord`, `AppUser`, `Product`)
+- Input/output shapes (e.g. `CreateSubUserInput`, `UpdateAdminProfileInput`)
+- Component props (e.g. `ButtonProps`, `ModalProps`, `ResourceManagerProps`)
+- Hook state types (e.g. `FeaturesState`, `AdminResourceState<T>`)
+- Utility types used across files (e.g. `RateLimitConfig`, `NavItem`)
+- Enums and union types (e.g. `FieldType`, `ButtonVariant`, `ReportPeriod`)
+
+**What does NOT go in `types/`:**
+
+- Inline generic parameters (`useState<string>`, `Promise<void>`)
+- Framework-provided types (`ReactNode`, `NextApiRequest`)
+
+### Service Layer (Client)
+
+**Pages and components must never import `api-client` directly.** All API calls go through domain-specific service files (e.g. `sub-user-service.ts`, `purchase-service.ts`, `report-service.ts`). This keeps data-fetching logic centralized and testable.
+
+### No Direct Prisma in Services (API)
+
+**Services must never call Prisma directly.** All database access goes through repository files. Services call repositories, repositories call Prisma.
 
 ---
 

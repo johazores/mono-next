@@ -4,12 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { authService } from "@/services/auth-service";
-import type { AuthUser } from "@/types";
-
-type NavItem = {
-  label: string;
-  href: string;
-};
+import type { AuthUser, NavItem } from "@/types";
 
 const navigation: NavItem[] = [
   { label: "Dashboard", href: "/admin" },

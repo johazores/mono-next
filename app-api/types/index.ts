@@ -46,3 +46,9 @@ export type {
   CreateActivityLogInput,
   ActivityLogFilter,
 } from "./activity-log";
+export type {
+  RateLimitEntry,
+  RateLimitConfig,
+  RateLimitResult,
+} from "./rate-limiter";
+export type { ApiResponse, ListResponse } from "./response";

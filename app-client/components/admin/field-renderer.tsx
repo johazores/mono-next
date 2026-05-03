@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { resourceService } from "@/services/resource-service";
-import type { ResourceField } from "@/types";
-
-type FieldRendererProps = {
-  field: ResourceField;
-  value: unknown;
-  onChange: (value: unknown) => void;
-};
+import type { ResourceField, FieldRendererProps, DynamicOption } from "@/types";
 
 function formatDateInput(value: unknown) {
   if (!value) return "";
@@ -94,8 +88,6 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
 }
 
 // --- Checkboxes sub-component ---
-
-type DynamicOption = { key: string; description: string; category: string };
 
 function CheckboxesField({
   field,

@@ -6,18 +6,7 @@ import { ResourceEditor } from "@/components/admin/resource-editor";
 import { ResourceList } from "@/components/admin/resource-list";
 import { useAdminResource } from "@/hooks/use-admin-resource";
 import { resourceService } from "@/services/resource-service";
-import type { ResourceField, ResourceItem } from "@/types";
-
-export type { ResourceField, ResourceItem };
-
-type ResourceManagerProps = {
-  title: string;
-  endpoint: string;
-  fields: ResourceField[];
-  getTitle: (item: ResourceItem) => string;
-  getSubtitle?: (item: ResourceItem) => string;
-  emptyItem: ResourceItem;
-};
+import type { ResourceItem, ResourceManagerProps } from "@/types";
 
 export function ResourceManager({
   title,

@@ -1,17 +1,4 @@
-type RateLimitEntry = {
-  timestamps: number[];
-};
-
-type RateLimitConfig = {
-  windowMs: number;
-  maxAttempts: number;
-};
-
-type RateLimitResult = {
-  allowed: boolean;
-  remaining: number;
-  resetAt: Date;
-};
+import type { RateLimitEntry, RateLimitConfig, RateLimitResult } from "@/types";
 
 const store = new Map<string, RateLimitEntry>();
 

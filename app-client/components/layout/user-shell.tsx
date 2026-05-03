@@ -4,12 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { userAuthService } from "@/services/user-auth-service";
-import type { AppUser } from "@/types";
-
-type NavItem = {
-  label: string;
-  href: string;
-};
+import type { AppUser, NavItem } from "@/types";
 
 const baseNavigation: NavItem[] = [
   { label: "Dashboard", href: "/dashboard" },

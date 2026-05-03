@@ -2,15 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { resourceService } from "@/services/resource-service";
-
-type State<T> = {
-  items: T[];
-  loading: boolean;
-  error: string;
-};
+import type { AdminResourceState } from "@/types";
 
 export function useAdminResource<T>(endpoint: string) {
-  const [state, setState] = useState<State<T>>({
+  const [state, setState] = useState<AdminResourceState<T>>({
     items: [],
     loading: true,
     error: "",

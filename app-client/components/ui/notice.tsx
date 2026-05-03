@@ -1,7 +1,4 @@
-type NoticeProps = {
-  message: string;
-  variant?: "success" | "error" | "info";
-};
+import type { NoticeProps } from "@/types";
 
 export function Notice({ message, variant = "success" }: NoticeProps) {
   const styles =

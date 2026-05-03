@@ -1,16 +1,4 @@
-import type { ReactNode } from "react";
-
-type ButtonVariant = "primary" | "secondary" | "danger";
-
-type ButtonProps = {
-  variant?: ButtonVariant;
-  size?: "sm" | "md";
-  disabled?: boolean;
-  children: ReactNode;
-  onClick?: () => void;
-  type?: "button" | "submit";
-  className?: string;
-};
+import type { ButtonVariant, ButtonProps } from "@/types";
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",

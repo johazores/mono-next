@@ -2,13 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getMyFeatures } from "@/services/feature-service";
-import type { FeatureFlag } from "@/types";
-
-type FeaturesState = {
-  features: FeatureFlag[];
-  loading: boolean;
-  error: string;
-};
+import type { FeaturesState } from "@/types";
 
 export function useFeatures() {
   const [state, setState] = useState<FeaturesState>({

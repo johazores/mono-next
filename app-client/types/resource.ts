@@ -26,3 +26,42 @@ export type ResourceItem = Record<string, unknown> & {
   id?: string;
   status?: string;
 };
+
+export type FieldRendererProps = {
+  field: ResourceField;
+  value: unknown;
+  onChange: (value: unknown) => void;
+};
+
+export type DynamicOption = {
+  key: string;
+  description: string;
+  category: string;
+};
+
+export type ResourceManagerProps = {
+  title: string;
+  endpoint: string;
+  fields: ResourceField[];
+  getTitle: (item: ResourceItem) => string;
+  getSubtitle?: (item: ResourceItem) => string;
+  emptyItem: ResourceItem;
+};
+
+export type ResourceEditorProps = {
+  item: ResourceItem;
+  fields: ResourceField[];
+  title: string;
+  saving: boolean;
+  onSave: (item: ResourceItem) => void;
+  onClose: () => void;
+};
+
+export type ResourceListProps = {
+  items: ResourceItem[];
+  loading: boolean;
+  getTitle: (item: ResourceItem) => string;
+  getSubtitle?: (item: ResourceItem) => string;
+  onEdit: (item: ResourceItem) => void;
+  onDelete: (item: ResourceItem) => void;
+};

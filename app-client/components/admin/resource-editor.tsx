@@ -3,22 +3,18 @@
 import { Fragment, useMemo, useState } from "react";
 import { Modal, Button } from "@/components/ui";
 import { FieldRenderer } from "@/components/admin/field-renderer";
-import type { EditorSection, ResourceField, ResourceItem } from "@/types";
+import type {
+  EditorSection,
+  ResourceField,
+  ResourceItem,
+  ResourceEditorProps,
+} from "@/types";
 
 function getFieldSection(field: ResourceField): EditorSection {
   if (field.section) return field.section;
   if (["summary", "description"].includes(field.name)) return "Content";
   return "Basics";
 }
-
-type ResourceEditorProps = {
-  item: ResourceItem;
-  fields: ResourceField[];
-  title: string;
-  saving: boolean;
-  onSave: (item: ResourceItem) => void;
-  onClose: () => void;
-};
 
 export function ResourceEditor({
   item,
