@@ -32,8 +32,9 @@ controllers/       HTTP layer (auth, method routing, responses)
 services/          Business logic and validation
 repositories/      Data access (Prisma queries)
 types/             Shared type definitions (barrel-exported via index.ts)
-lib/               Utilities (auth, password, prisma, response, credentials)
+lib/               Utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger)
 prisma/            Schema and seed scripts
+tests/             Unit tests (Vitest) — mirrors source structure
 ```
 
 ## Database Collections
@@ -106,6 +107,46 @@ prisma/            Schema and seed scripts
 | GET    | /api/activity-logs | List activity logs (paginated, filterable) |
 
 Query parameters: `page`, `limit` (max 100), `action`, `actor`, `actorId`, `resource`.
+
+## Testing
+
+Unit tests use [Vitest](https://vitest.dev/) and run automatically before every build via the `prebuild` script.
+
+```bash
+pnpm test          # single run
+pnpm test:watch    # watch mode
+pnpm build         # runs tests first, then builds
+```
+
+### Test Structure
+
+```
+tests/
+  lib/               Pure utility tests (no mocks)
+    password.test.ts
+    rate-limiter.test.ts
+  services/           Business logic tests (mocked repositories)
+    admin-service.test.ts
+    user-service.test.ts
+    activity-log-service.test.ts
+```
+
+### Guidelines
+
+- **Every new feature must include tests.** PRs without tests for new logic will be rejected.
+- Test files live in `tests/` mirroring the source structure.
+- Use `vi.mock()` to mock repository modules in service tests — never hit the database.
+- Focus on core logic and critical flows: validation, auth, guards, error paths.
+- Use unique identifiers per test to avoid shared state.
+- Run `pnpm test` locally before pushing.
+
+### Available Scripts
+
+| Script            | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| `pnpm test`       | Run all tests once                              |
+| `pnpm test:watch` | Run tests in watch mode during development      |
+| `pnpm build`      | Run tests (prebuild) then build the application |
 
 ## Authentication
 

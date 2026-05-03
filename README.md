@@ -71,5 +71,18 @@ Admin-guarded routes redirect to `/login`. User-guarded routes redirect to
 - **Framework**: Next.js (v16)
 - **Language**: TypeScript
 - **Database**: MongoDB (via Prisma)
+- **Testing**: Vitest (API unit tests, runs as part of build)
 - **Styling**: Tailwind CSS (client only)
 - **Package Manager**: pnpm
+
+## Testing
+
+Unit tests live in `app-api/tests/` and run automatically before every build.
+
+```bash
+pnpm test          # run all API tests from root
+pnpm test:watch    # watch mode from root
+pnpm build         # tests run before build (prebuild hook)
+```
+
+See [app-api/README.md](app-api/README.md#testing) for test structure and guidelines.
