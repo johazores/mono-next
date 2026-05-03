@@ -95,6 +95,23 @@ export function AuthConfigProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // Clerk mode is set but publishable key is missing — show error instead
+  // of silently falling back to credential forms that the server will reject
+  if (config.provider === "clerk" && !config.clerkPublishableKey) {
+    return (
+      <AuthConfigContext.Provider
+        value={{
+          provider: "clerk",
+          clerkPublishableKey: "",
+          ready: true,
+          getToken: async () => null,
+        }}
+      >
+        {children}
+      </AuthConfigContext.Provider>
+    );
+  }
+
   return (
     <AuthConfigContext.Provider
       value={{

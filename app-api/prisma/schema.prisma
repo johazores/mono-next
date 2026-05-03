@@ -29,6 +29,7 @@ model User {
   clerkId             String?
   name                String
   passwordHash        String
+  stripeCustomerId    String?        // Stripe customer ID for billing portal
   status              String         @default("active") // active | disabled
   parentId            String?        @db.ObjectId
   ancestors           String[]       @db.ObjectId // materialized path of parent IDs (e.g. [parentId])
@@ -44,7 +45,7 @@ model User {
   updatedAt           DateTime       @updatedAt
 
   @@unique([env, email])
-  @@unique([env, clerkId])
+  @@index([env, clerkId])
 }
 
 model UserSession {
@@ -86,46 +87,85 @@ model ActivityLog {
 }
 
 model Product {
-  id           String     @id @default(auto()) @map("_id") @db.ObjectId
-  env          String     @default("dev") // dev | production
-  name         String
-  slug         String
-  description  String?
-  type         String     @default("physical") // physical | digital | membership
-  price        Float      @default(0)
-  currency     String     @default("USD")
-  paymentModel String     @default("one-time") // one-time | recurring
-  interval     String?    // month | year (for recurring products)
-  maxSubUsers  Int        @default(0) // 0 = none, -1 = unlimited
-  fileUrl      String? // For digital download products
-  accessKeys   String[] // Feature keys unlocked by purchase
-  isActive     Boolean    @default(true)
-  sortOrder    Int        @default(0)
-  metadata     Json?
-  purchases    Purchase[]
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id                  String         @id @default(auto()) @map("_id") @db.ObjectId
+  env                 String         @default("dev") // dev | production
+  name                String
+  slug                String
+  description         String?
+  type                String         @default("physical") // physical | digital | membership
+  price               Float          @default(0)
+  currency            String         @default("USD")
+  paymentModel        String         @default("one-time") // one-time | recurring
+  interval            String?        // month | year (for recurring products)
+  maxSubUsers         Int            @default(0) // 0 = none, -1 = unlimited
+  fileUrls            String[]       // For digital download products
+  accessKeys          String[]       // Feature keys unlocked by purchase
+  stripeTestProductId String?        // Stripe product ID (test mode)
+  stripeTestPriceId   String?        // Stripe price ID (test mode)
+  stripeLiveProductId String?        // Stripe product ID (live mode)
+  stripeLivePriceId   String?        // Stripe price ID (live mode)
+  isActive            Boolean        @default(true)
+  sortOrder           Int            @default(0)
+  metadata            Json?
+  purchases           Purchase[]
+  prices              ProductPrice[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   @@unique([env, slug])
 }
 
-model Purchase {
+model ProductPrice {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
   env             String    @default("dev") // dev | production
-  userId          String    @db.ObjectId
   productId       String    @db.ObjectId
-  status          String    @default("completed") // pending | completed | refunded | failed | active | cancelled | expired
+  label           String    // e.g. "Monthly 2024", "Launch Offer"
+  stripePriceId   String    // Stripe price ID
+  mode            String    @default("test") // test | live
   amount          Float
   currency        String    @default("USD")
-  externalId      String? // Payment provider reference
+  interval        String?   // month | year (null for one-time)
   startDate       DateTime  @default(now())
-  endDate         DateTime?
-  cancelledAt     DateTime?
+  endDate         DateTime? // null = no end date (active indefinitely)
+  isDefault       Boolean   @default(false)
   metadata        Json?
-  user            User      @relation(fields: [userId], references: [id])
   product         Product   @relation(fields: [productId], references: [id])
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+model Purchase {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  env             String         @default("dev") // dev | production
+  userId          String         @db.ObjectId
+  productId       String         @db.ObjectId
+  status          String         @default("completed") // pending | completed | refunded | failed | active | cancelled | expired
+  amount          Float
+  currency        String         @default("USD")
+  externalId      String?        // Payment provider reference
+  startDate       DateTime       @default(now())
+  endDate         DateTime?
+  cancelledAt     DateTime?
+  metadata        Json?
+  user            User           @relation(fields: [userId], references: [id])
+  product         Product        @relation(fields: [productId], references: [id])
+  files           PurchaseFile[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model PurchaseFile {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  env        String   @default("dev") // dev | production
+  purchaseId String   @db.ObjectId
+  fileName   String   // Display name
+  mimeType   String   @default("application/octet-stream")
+  sizeBytes  Int      @default(0)
+  data       String   // base64-encoded file content (temporary approach)
+  metadata   Json?
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Membership {
@@ -165,4 +205,19 @@ model SiteSetting {
   updatedAt DateTime @updatedAt
 
   @@unique([env, key])
+}
+
+model CheckoutSession {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  env        String   @default("dev") // dev | production
+  sessionId  String   @unique // Payment provider session ID
+  userId     String?  @db.ObjectId // null for guest checkout
+  guestEmail String? // Guest checkout email
+  guestName  String? // Guest checkout name
+  items      Json // [{productId, quantity, priceId}]
+  status     String   @default("pending") // pending | completed | expired
+  provider   String   @default("stripe") // stripe | woocommerce (future)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

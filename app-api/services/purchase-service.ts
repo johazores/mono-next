@@ -2,6 +2,11 @@ import { purchaseRepository } from "@/repositories/purchase-repository";
 import { productRepository } from "@/repositories/product-repository";
 import type { PurchaseRecord } from "@/types";
 
+/**
+ * Compute a fallback end date for admin-created subscriptions when no Stripe
+ * data is available. For Stripe-synced purchases the end date comes directly
+ * from Stripe's `current_period_end` — this function is NOT used in that path.
+ */
 function computeEndDate(interval: string | null, from?: Date): Date | null {
   if (!interval) return null;
   const start = from ?? new Date();

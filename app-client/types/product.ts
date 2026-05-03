@@ -6,4 +6,6 @@ export type Product = {
   price: number;
   currency: string;
   description: string | null;
+  paymentModel: string;
+  interval: string | null;
 };

@@ -6,6 +6,7 @@ import {
   getUserSession,
 } from "@/lib/user-auth";
 import { userService } from "@/services/user-service";
+import { billingService } from "@/services/billing-service";
 import { settingService } from "@/services/setting-service";
 import { checkRateLimit, USER_LOGIN_LIMIT } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
@@ -70,6 +71,10 @@ export async function userLoginController(
   try {
     const user = await userService.authenticate(email, password);
     await createUserSession(user.id, res);
+
+    // Sync Stripe data in background (non-blocking)
+    billingService.syncInBackground(user.id);
+
     await logActivity(req, "user.login", {
       actor: "user",
       actorId: user.id,
@@ -163,6 +168,9 @@ export async function userMeController(
     sendError(res, "Not authenticated.", 401);
     return;
   }
+
+  // Sync Stripe data in background on session check (non-blocking)
+  billingService.syncInBackground(session.user.id);
 
   sendOk(res, session.user);
 }

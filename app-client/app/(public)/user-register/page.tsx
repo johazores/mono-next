@@ -9,7 +9,7 @@ import { ClerkSignUp } from "@/components/auth/clerk-auth";
 
 export default function UserRegisterPage() {
   const router = useRouter();
-  const { provider, ready } = useAuthConfig();
+  const { provider, clerkPublishableKey, ready } = useAuthConfig();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,6 +44,24 @@ export default function UserRegisterPage() {
   }
 
   if (provider === "clerk") {
+    if (!clerkPublishableKey) {
+      return (
+        <div className="flex min-h-full items-center justify-center px-4">
+          <div className="w-full max-w-sm space-y-6">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900">mono-next</h1>
+              <p className="mt-1 text-sm text-gray-500">Create your account</p>
+            </div>
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+              SSO (Clerk) authentication is enabled but the Clerk Publishable
+              Key has not been configured. Please ask an administrator to set it
+              in the admin settings panel.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-full items-center justify-center px-4">
         <div className="w-full max-w-sm space-y-6">

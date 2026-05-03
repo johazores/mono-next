@@ -6,6 +6,8 @@ export type AdminRecord = {
   email: string;
   role: Role;
   status: AccountStatus;
+  failedLoginAttempts: number;
+  lockedUntil: Date | null;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

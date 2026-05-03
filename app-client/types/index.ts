@@ -37,3 +37,11 @@ export type {
 } from "./report";
 export type { ActivityLogEntry, ActivityLogList } from "./activity-log";
 export type { AuthProvider, PublicAuthConfig } from "./setting";
+export type {
+  CartItem,
+  CheckoutRequest,
+  CheckoutResponse,
+  CheckoutVerifyResponse,
+  PublicPaymentConfig,
+} from "./checkout";
+export type { PurchaseDownload, DownloadFile } from "./download";

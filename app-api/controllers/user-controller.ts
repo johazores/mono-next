@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "@/lib/admin-auth";
 import { sendError, sendOk } from "@/lib/api-response";
 import { userService } from "@/services/user-service";
+import { billingService } from "@/services/billing-service";
 import { logActivity } from "@/lib/activity-logger";
 import { verifyCsrf } from "@/lib/csrf";
 
@@ -55,6 +56,10 @@ export async function userItemController(
     if (req.method === "GET") {
       const item = await userService.getById(id);
       if (!item) return sendError(res, "User not found.", 404);
+
+      // Sync Stripe data in background when admin views a user
+      billingService.syncInBackground(id);
+
       return sendOk(res, item);
     }
 

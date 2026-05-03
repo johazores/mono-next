@@ -27,7 +27,7 @@ export type PurchaseRecord = {
     slug: string;
     type: string;
     price: number;
-    fileUrl: string | null;
+    fileUrls: string[];
     accessKeys: string[];
     interval: string | null;
     maxSubUsers: number;

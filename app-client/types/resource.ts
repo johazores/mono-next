@@ -1,3 +1,5 @@
+import type React from "react";
+
 export type FieldType =
   | "text"
   | "password"
@@ -46,6 +48,11 @@ export type ResourceManagerProps = {
   getTitle: (item: ResourceItem) => string;
   getSubtitle?: (item: ResourceItem) => string;
   emptyItem: ResourceItem;
+  renderItemActions?: (item: ResourceItem) => React.ReactNode;
+  renderEditorExtra?: (
+    item: ResourceItem,
+    setField: (name: string, value: unknown) => void,
+  ) => React.ReactNode;
 };
 
 export type ResourceEditorProps = {
@@ -55,6 +62,10 @@ export type ResourceEditorProps = {
   saving: boolean;
   onSave: (item: ResourceItem) => void;
   onClose: () => void;
+  renderExtra?: (
+    item: ResourceItem,
+    setField: (name: string, value: unknown) => void,
+  ) => React.ReactNode;
 };
 
 export type ResourceListProps = {
@@ -64,4 +75,5 @@ export type ResourceListProps = {
   getSubtitle?: (item: ResourceItem) => string;
   onEdit: (item: ResourceItem) => void;
   onDelete: (item: ResourceItem) => void;
+  renderItemActions?: (item: ResourceItem) => React.ReactNode;
 };

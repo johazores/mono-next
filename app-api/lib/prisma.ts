@@ -6,11 +6,14 @@ const ENV_SCOPED_MODELS = new Set([
   "User",
   "UserSession",
   "Product",
+  "ProductPrice",
   "Purchase",
+  "PurchaseFile",
   "Membership",
   "Feature",
   "ActivityLog",
   "SiteSetting",
+  "CheckoutSession",
 ]);
 
 function isEnvScoped(model: string | undefined): boolean {
@@ -28,6 +31,23 @@ function createExtendedClient() {
         if (!isEnvScoped(model)) return query(args);
 
         const env = getAppEnv();
+
+        // Ensure a where clause exists for read/update/delete operations that
+        // support filtering (findMany, updateMany, deleteMany, count, etc.)
+        const needsWhere = [
+          "findMany",
+          "updateMany",
+          "deleteMany",
+          "count",
+          "aggregate",
+          "groupBy",
+        ];
+        if (
+          needsWhere.includes(operation) &&
+          !("where" in args && args.where)
+        ) {
+          (args as Record<string, unknown>).where = {};
+        }
 
         // Inject env into where clause for read / update / delete operations
         if (

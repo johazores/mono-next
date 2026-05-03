@@ -7,7 +7,7 @@ const productSelect = {
   slug: true,
   type: true,
   price: true,
-  fileUrl: true,
+  fileUrls: true,
   accessKeys: true,
   interval: true,
   maxSubUsers: true,
@@ -89,6 +89,13 @@ export const purchaseRepository = {
     return prisma.purchase.update({
       where: { id },
       data,
+      include: { product: { select: productSelect } },
+    });
+  },
+
+  findByExternalId(externalId: string) {
+    return prisma.purchase.findFirst({
+      where: { externalId },
       include: { product: { select: productSelect } },
     });
   },

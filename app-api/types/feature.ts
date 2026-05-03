@@ -1,5 +1,6 @@
 export type FeatureRecord = {
   id: string;
+  env: string;
   key: string;
   description: string;
   category: string;

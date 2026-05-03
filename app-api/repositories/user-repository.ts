@@ -7,6 +7,7 @@ const safeSelect = {
   email: true,
   clerkId: true,
   name: true,
+  stripeCustomerId: true,
   status: true,
   parentId: true,
   ancestors: true,
@@ -36,8 +37,8 @@ export const userRepository = {
     });
   },
   findByClerkId(clerkId: string) {
-    return prisma.user.findUnique({
-      where: { env_clerkId: { env: getAppEnv(), clerkId } },
+    return prisma.user.findFirst({
+      where: { clerkId },
     });
   },
   findByIdWithPassword(id: string) {

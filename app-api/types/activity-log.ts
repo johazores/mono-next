@@ -27,12 +27,21 @@ export type ActivityAction =
   | "feature.create"
   | "feature.update"
   | "feature.delete"
-  | "setting.update";
+  | "setting.update"
+  | "checkout.create"
+  | "checkout.verify"
+  | "price.create"
+  | "price.update"
+  | "price.delete"
+  | "file.download"
+  | "billing.portal"
+  | "billing.sync";
 
 export type ActivityActor = "admin" | "user" | "system";
 
 export type ActivityLogRecord = {
   id: string;
+  env: string;
   actor: ActivityActor;
   actorId: string | null;
   actorEmail: string | null;

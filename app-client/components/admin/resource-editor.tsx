@@ -23,6 +23,7 @@ export function ResourceEditor({
   saving,
   onSave,
   onClose,
+  renderExtra,
 }: ResourceEditorProps) {
   const [editing, setEditing] = useState<ResourceItem>(item);
   const [activeSection, setActiveSection] = useState<EditorSection>("Basics");
@@ -94,6 +95,8 @@ export function ResourceEditor({
             </Fragment>
           ))}
       </div>
+
+      {renderExtra && renderExtra(editing, setField)}
     </Modal>
   );
 }

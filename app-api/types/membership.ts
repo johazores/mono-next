@@ -3,6 +3,7 @@ export type MembershipStatus = "active" | "expired" | "revoked";
 
 export type MembershipRecord = {
   id: string;
+  env: string;
   userId: string;
   type: MembershipType;
   sourceId: string;

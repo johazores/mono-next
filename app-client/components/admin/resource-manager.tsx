@@ -15,6 +15,8 @@ export function ResourceManager({
   getTitle,
   getSubtitle,
   emptyItem,
+  renderItemActions,
+  renderEditorExtra,
 }: ResourceManagerProps) {
   const { items, loading, error, reload } =
     useAdminResource<ResourceItem>(endpoint);
@@ -89,6 +91,7 @@ export function ResourceManager({
           saving={saving}
           onSave={handleSave}
           onClose={() => setEditingItem(null)}
+          renderExtra={renderEditorExtra}
         />
       )}
 
@@ -102,6 +105,7 @@ export function ResourceManager({
           setNotice(null);
         }}
         onDelete={handleDelete}
+        renderItemActions={renderItemActions}
       />
     </section>
   );

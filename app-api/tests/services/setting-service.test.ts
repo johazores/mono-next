@@ -16,15 +16,21 @@ const repo = vi.mocked(settingRepository);
 
 beforeEach(() => vi.clearAllMocks());
 
+function fakeSetting(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "1",
+    env: "development",
+    key: "auth.provider",
+    value: "credentials" as string,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
 describe("settingService.get", () => {
   it("returns the value if the setting exists", async () => {
-    repo.get.mockResolvedValue({
-      id: "1",
-      key: "auth.provider",
-      value: "clerk",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    repo.get.mockResolvedValue(fakeSetting({ value: "clerk" }));
     const result = await settingService.get("auth.provider");
     expect(result).toBe("clerk");
   });
@@ -74,20 +80,8 @@ describe("settingService.set", () => {
 describe("settingService.getAll", () => {
   it("returns all settings as key-value pairs", async () => {
     repo.getAll.mockResolvedValue([
-      {
-        id: "1",
-        key: "auth.provider",
-        value: "credentials",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: "2",
-        key: "auth.clerkPublishableKey",
-        value: "",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      fakeSetting({ id: "1", key: "auth.provider", value: "credentials" }),
+      fakeSetting({ id: "2", key: "auth.clerkPublishableKey", value: "" }),
     ]);
     const result = await settingService.getAll();
     expect(result).toEqual([
@@ -116,27 +110,17 @@ describe("settingService.getAuthConfig", () => {
 
   it("returns stored values", async () => {
     repo.getMany.mockResolvedValue([
-      {
-        id: "1",
-        key: "auth.provider",
-        value: "clerk",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
+      fakeSetting({ id: "1", key: "auth.provider", value: "clerk" }),
+      fakeSetting({
         id: "2",
         key: "auth.clerkPublishableKey",
         value: "pk_test_abc",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
+      }),
+      fakeSetting({
         id: "3",
         key: "auth.clerkSecretKey",
         value: "sk_test_xyz",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      }),
     ]);
     const config = await settingService.getAuthConfig();
     expect(config).toEqual({
@@ -150,27 +134,17 @@ describe("settingService.getAuthConfig", () => {
 describe("settingService.getPublicAuthConfig", () => {
   it("excludes the secret key", async () => {
     repo.getMany.mockResolvedValue([
-      {
-        id: "1",
-        key: "auth.provider",
-        value: "clerk",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
+      fakeSetting({ id: "1", key: "auth.provider", value: "clerk" }),
+      fakeSetting({
         id: "2",
         key: "auth.clerkPublishableKey",
         value: "pk_test_abc",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
+      }),
+      fakeSetting({
         id: "3",
         key: "auth.clerkSecretKey",
         value: "sk_test_xyz",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      }),
     ]);
     const config = await settingService.getPublicAuthConfig();
     expect(config).toEqual({
@@ -178,5 +152,121 @@ describe("settingService.getPublicAuthConfig", () => {
       clerkPublishableKey: "pk_test_abc",
     });
     expect(config).not.toHaveProperty("clerkSecretKey");
+  });
+});
+
+describe("settingService.set payment", () => {
+  it("rejects invalid payment provider", async () => {
+    await expect(
+      settingService.set("payment.provider", "paypal"),
+    ).rejects.toThrow("Invalid payment provider");
+  });
+
+  it("accepts valid payment provider", async () => {
+    repo.set.mockResolvedValue({} as never);
+    await settingService.set("payment.provider", "stripe");
+    expect(repo.set).toHaveBeenCalledWith("payment.provider", "stripe");
+  });
+
+  it("rejects invalid payment mode", async () => {
+    await expect(settingService.set("payment.mode", "sandbox")).rejects.toThrow(
+      "Invalid payment mode",
+    );
+  });
+
+  it("accepts valid payment mode", async () => {
+    repo.set.mockResolvedValue({} as never);
+    await settingService.set("payment.mode", "live");
+    expect(repo.set).toHaveBeenCalledWith("payment.mode", "live");
+  });
+
+  it("accepts Stripe key settings", async () => {
+    repo.set.mockResolvedValue({} as never);
+    await settingService.set("payment.stripe.testPublicKey", "pk_test_123");
+    expect(repo.set).toHaveBeenCalledWith(
+      "payment.stripe.testPublicKey",
+      "pk_test_123",
+    );
+  });
+});
+
+describe("settingService.getPaymentConfig", () => {
+  it("returns defaults when no settings exist", async () => {
+    repo.getMany.mockResolvedValue([]);
+    const config = await settingService.getPaymentConfig();
+    expect(config).toEqual({
+      provider: "stripe",
+      mode: "test",
+      publicKey: "",
+      secretKey: "",
+    });
+  });
+
+  it("returns test keys in test mode", async () => {
+    repo.getMany.mockResolvedValue([
+      fakeSetting({ key: "payment.provider", value: "stripe" }),
+      fakeSetting({ key: "payment.mode", value: "test" }),
+      fakeSetting({
+        key: "payment.stripe.testPublicKey",
+        value: "pk_test_abc",
+      }),
+      fakeSetting({
+        key: "payment.stripe.testSecretKey",
+        value: "sk_test_xyz",
+      }),
+    ]);
+    const config = await settingService.getPaymentConfig();
+    expect(config).toEqual({
+      provider: "stripe",
+      mode: "test",
+      publicKey: "pk_test_abc",
+      secretKey: "sk_test_xyz",
+    });
+  });
+
+  it("returns live keys in live mode", async () => {
+    repo.getMany.mockResolvedValue([
+      fakeSetting({ key: "payment.provider", value: "stripe" }),
+      fakeSetting({ key: "payment.mode", value: "live" }),
+      fakeSetting({
+        key: "payment.stripe.livePublicKey",
+        value: "pk_live_abc",
+      }),
+      fakeSetting({
+        key: "payment.stripe.liveSecretKey",
+        value: "sk_live_xyz",
+      }),
+    ]);
+    const config = await settingService.getPaymentConfig();
+    expect(config).toEqual({
+      provider: "stripe",
+      mode: "live",
+      publicKey: "pk_live_abc",
+      secretKey: "sk_live_xyz",
+    });
+  });
+});
+
+describe("settingService.getPublicPaymentConfig", () => {
+  it("excludes the secret key", async () => {
+    repo.getMany.mockResolvedValue([
+      fakeSetting({ key: "payment.provider", value: "stripe" }),
+      fakeSetting({ key: "payment.mode", value: "test" }),
+      fakeSetting({
+        key: "payment.stripe.testPublicKey",
+        value: "pk_test_abc",
+      }),
+      fakeSetting({
+        key: "payment.stripe.testSecretKey",
+        value: "sk_test_secret",
+      }),
+    ]);
+    const config = await settingService.getPublicPaymentConfig();
+    expect(config).toEqual({
+      provider: "stripe",
+      mode: "test",
+      publicKey: "pk_test_abc",
+    });
+    expect(config).not.toHaveProperty("secretKey");
   });
 });

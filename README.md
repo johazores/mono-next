@@ -30,9 +30,11 @@ mono-next/
 
 Backend API server with dual authentication (admin sessions and user sessions),
 admin CRUD, user CRUD, dynamic subscription plans with history, feature flags,
-product and purchase management, membership-based access control, user hierarchy
-(sub-users), reporting, CSRF protection, security headers, and a layered
-architecture (controller, service, repository).
+product and purchase management, Stripe checkout integration (test/live modes),
+multiple product prices with date ranges, downloadable purchase files,
+membership-based access control, user hierarchy (sub-users), reporting, CSRF
+protection, security headers, and a layered architecture (controller, service,
+repository).
 
 Sub-users inherit their parent's plan features. Promoted sub-users with their
 own qualifying subscription can create sub-users of their own.
@@ -42,8 +44,9 @@ own qualifying subscription can create sub-users of their own.
 Frontend application with an admin panel and a user dashboard.
 Admin-guarded routes redirect to `/login`. User-guarded routes redirect to
 `/user-login`. Features include user registration, subscription plan management,
-product purchases, feature access views, sub-user management (account owners
-only), reporting, and activity log viewing.
+product purchases, Stripe checkout with cart, file downloads from purchases,
+feature access views, sub-user management (account owners only), reporting, and
+activity log viewing.
 
 ## Getting Started
 

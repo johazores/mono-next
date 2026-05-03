@@ -4,21 +4,42 @@ import { useState, useEffect, type FormEvent } from "react";
 import { adminSettingService } from "@/services/admin-setting-service";
 import type { AuthProvider } from "@/types";
 
+type PaymentMode = "test" | "live";
+
 type AuthSettings = {
   provider: AuthProvider;
   clerkPublishableKey: string;
   clerkSecretKey: string;
 };
 
+type PaymentSettings = {
+  provider: string;
+  mode: PaymentMode;
+  stripeTestPublicKey: string;
+  stripeTestSecretKey: string;
+  stripeLivePublicKey: string;
+  stripeLiveSecretKey: string;
+};
+
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<AuthSettings>({
+  const [auth, setAuth] = useState<AuthSettings>({
     provider: "credentials",
     clerkPublishableKey: "",
     clerkSecretKey: "",
   });
+  const [payment, setPayment] = useState<PaymentSettings>({
+    provider: "stripe",
+    mode: "test",
+    stripeTestPublicKey: "",
+    stripeTestSecretKey: "",
+    stripeLivePublicKey: "",
+    stripeLiveSecretKey: "",
+  });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [savingAuth, setSavingAuth] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [authMessage, setAuthMessage] = useState("");
+  const [paymentMessage, setPaymentMessage] = useState("");
 
   useEffect(() => {
     adminSettingService
@@ -28,66 +49,120 @@ export default function SettingsPage() {
           const map = new Map(
             res.data.items.map((s) => [s.key, s.value as string]),
           );
-          setSettings({
+          setAuth({
             provider:
               (map.get("auth.provider") as AuthProvider) || "credentials",
             clerkPublishableKey:
               (map.get("auth.clerkPublishableKey") as string) || "",
             clerkSecretKey: (map.get("auth.clerkSecretKey") as string) || "",
           });
+          setPayment({
+            provider: (map.get("payment.provider") as string) || "stripe",
+            mode: (map.get("payment.mode") as PaymentMode) || "test",
+            stripeTestPublicKey:
+              (map.get("payment.stripe.testPublicKey") as string) || "",
+            stripeTestSecretKey:
+              (map.get("payment.stripe.testSecretKey") as string) || "",
+            stripeLivePublicKey:
+              (map.get("payment.stripe.livePublicKey") as string) || "",
+            stripeLiveSecretKey:
+              (map.get("payment.stripe.liveSecretKey") as string) || "",
+          });
         }
       })
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleAuthSubmit(e: FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setMessage("");
+    setSavingAuth(true);
+    setAuthMessage("");
 
     try {
-      await adminSettingService.update("auth.provider", settings.provider);
+      await adminSettingService.update("auth.provider", auth.provider);
       await adminSettingService.update(
         "auth.clerkPublishableKey",
-        settings.clerkPublishableKey,
+        auth.clerkPublishableKey,
       );
       await adminSettingService.update(
         "auth.clerkSecretKey",
-        settings.clerkSecretKey,
+        auth.clerkSecretKey,
       );
-      setMessage("Settings saved successfully.");
+      setAuthMessage("Auth settings saved successfully.");
     } catch (err) {
-      setMessage(
+      setAuthMessage(
         err instanceof Error ? err.message : "Failed to save settings.",
       );
     } finally {
-      setSaving(false);
+      setSavingAuth(false);
     }
   }
+
+  async function handlePaymentSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSavingPayment(true);
+    setPaymentMessage("");
+
+    try {
+      await adminSettingService.update("payment.provider", payment.provider);
+      await adminSettingService.update("payment.mode", payment.mode);
+      await adminSettingService.update(
+        "payment.stripe.testPublicKey",
+        payment.stripeTestPublicKey,
+      );
+      await adminSettingService.update(
+        "payment.stripe.testSecretKey",
+        payment.stripeTestSecretKey,
+      );
+      await adminSettingService.update(
+        "payment.stripe.livePublicKey",
+        payment.stripeLivePublicKey,
+      );
+      await adminSettingService.update(
+        "payment.stripe.liveSecretKey",
+        payment.stripeLiveSecretKey,
+      );
+      setPaymentMessage("Payment settings saved successfully.");
+    } catch (err) {
+      setPaymentMessage(
+        err instanceof Error ? err.message : "Failed to save settings.",
+      );
+    } finally {
+      setSavingPayment(false);
+    }
+  }
+
+  const inputClass =
+    "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
 
   if (loading) {
     return <p className="text-sm text-gray-400">Loading settings&hellip;</p>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div>
         <h1 className="text-lg font-semibold text-gray-900">Settings</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Configure authentication provider and other system settings.
+          Configure authentication, payment, and other system settings.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-lg space-y-5">
-        {message && (
+      {/* Auth Settings */}
+      <form onSubmit={handleAuthSubmit} className="max-w-lg space-y-5">
+        <h2 className="text-base font-semibold text-gray-900">
+          Authentication
+        </h2>
+
+        {authMessage && (
           <div
             className={`rounded-lg border px-4 py-3 text-sm ${
-              message.includes("success")
+              authMessage.includes("success")
                 ? "border-green-200 bg-green-50 text-green-700"
                 : "border-red-200 bg-red-50 text-red-700"
             }`}
           >
-            {message}
+            {authMessage}
           </div>
         )}
 
@@ -96,14 +171,14 @@ export default function SettingsPage() {
             Authentication Provider
           </label>
           <select
-            value={settings.provider}
+            value={auth.provider}
             onChange={(e) =>
-              setSettings((s) => ({
+              setAuth((s) => ({
                 ...s,
                 provider: e.target.value as AuthProvider,
               }))
             }
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClass}
           >
             <option value="credentials">
               Credentials (email &amp; password)
@@ -116,7 +191,7 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {settings.provider === "clerk" && (
+        {auth.provider === "clerk" && (
           <>
             <div>
               <label className="block text-sm font-medium text-gray-700">
@@ -124,15 +199,15 @@ export default function SettingsPage() {
               </label>
               <input
                 type="text"
-                value={settings.clerkPublishableKey}
+                value={auth.clerkPublishableKey}
                 onChange={(e) =>
-                  setSettings((s) => ({
+                  setAuth((s) => ({
                     ...s,
                     clerkPublishableKey: e.target.value,
                   }))
                 }
                 placeholder="pk_test_..."
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClass}
               />
             </div>
 
@@ -142,15 +217,15 @@ export default function SettingsPage() {
               </label>
               <input
                 type="password"
-                value={settings.clerkSecretKey}
+                value={auth.clerkSecretKey}
                 onChange={(e) =>
-                  setSettings((s) => ({
+                  setAuth((s) => ({
                     ...s,
                     clerkSecretKey: e.target.value,
                   }))
                 }
                 placeholder="sk_test_..."
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClass}
               />
               <p className="mt-1 text-xs text-gray-500">
                 Stored securely. Required for backend token verification.
@@ -161,10 +236,150 @@ export default function SettingsPage() {
 
         <button
           type="submit"
-          disabled={saving}
+          disabled={savingAuth}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
         >
-          {saving ? "Saving\u2026" : "Save Settings"}
+          {savingAuth ? "Saving\u2026" : "Save Auth Settings"}
+        </button>
+      </form>
+
+      <hr className="border-gray-200" />
+
+      {/* Payment Settings */}
+      <form onSubmit={handlePaymentSubmit} className="max-w-lg space-y-5">
+        <h2 className="text-base font-semibold text-gray-900">Payment</h2>
+
+        {paymentMessage && (
+          <div
+            className={`rounded-lg border px-4 py-3 text-sm ${
+              paymentMessage.includes("success")
+                ? "border-green-200 bg-green-50 text-green-700"
+                : "border-red-200 bg-red-50 text-red-700"
+            }`}
+          >
+            {paymentMessage}
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Payment Provider
+          </label>
+          <select
+            value={payment.provider}
+            onChange={(e) =>
+              setPayment((s) => ({ ...s, provider: e.target.value }))
+            }
+            className={inputClass}
+          >
+            <option value="stripe">Stripe</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Mode
+          </label>
+          <select
+            value={payment.mode}
+            onChange={(e) =>
+              setPayment((s) => ({
+                ...s,
+                mode: e.target.value as PaymentMode,
+              }))
+            }
+            className={inputClass}
+          >
+            <option value="test">Test</option>
+            <option value="live">Live</option>
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Test mode uses Stripe test keys. Switch to Live for real payments.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
+          <h3 className="text-sm font-medium text-gray-700">Test Mode Keys</h3>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">
+              Publishable Key
+            </label>
+            <input
+              type="text"
+              value={payment.stripeTestPublicKey}
+              onChange={(e) =>
+                setPayment((s) => ({
+                  ...s,
+                  stripeTestPublicKey: e.target.value,
+                }))
+              }
+              placeholder="pk_test_..."
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">
+              Secret Key
+            </label>
+            <input
+              type="password"
+              value={payment.stripeTestSecretKey}
+              onChange={(e) =>
+                setPayment((s) => ({
+                  ...s,
+                  stripeTestSecretKey: e.target.value,
+                }))
+              }
+              placeholder="sk_test_..."
+              className={inputClass}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
+          <h3 className="text-sm font-medium text-gray-700">Live Mode Keys</h3>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">
+              Publishable Key
+            </label>
+            <input
+              type="text"
+              value={payment.stripeLivePublicKey}
+              onChange={(e) =>
+                setPayment((s) => ({
+                  ...s,
+                  stripeLivePublicKey: e.target.value,
+                }))
+              }
+              placeholder="pk_live_..."
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">
+              Secret Key
+            </label>
+            <input
+              type="password"
+              value={payment.stripeLiveSecretKey}
+              onChange={(e) =>
+                setPayment((s) => ({
+                  ...s,
+                  stripeLiveSecretKey: e.target.value,
+                }))
+              }
+              placeholder="sk_live_..."
+              className={inputClass}
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={savingPayment}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+        >
+          {savingPayment ? "Saving\u2026" : "Save Payment Settings"}
         </button>
       </form>
     </div>

@@ -76,7 +76,7 @@ export const productService = {
             : "month"
           : null,
       maxSubUsers: input.maxSubUsers ?? 0,
-      fileUrl: input.fileUrl || null,
+      fileUrls: input.fileUrls ?? [],
       accessKeys: input.accessKeys ?? [],
       sortOrder: input.sortOrder ?? 0,
       metadata: (input.metadata ?? null) as never,
@@ -128,7 +128,7 @@ export const productService = {
         throw new Error("Invalid payment model.");
       data.paymentModel = input.paymentModel;
     }
-    if (input.fileUrl !== undefined) data.fileUrl = input.fileUrl || null;
+    if (input.fileUrls !== undefined) data.fileUrls = input.fileUrls ?? [];
     if (input.accessKeys !== undefined) data.accessKeys = input.accessKeys;
     if (input.isActive !== undefined) data.isActive = input.isActive;
     if (input.interval !== undefined) {

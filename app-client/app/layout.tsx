@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthConfigProvider } from "@/components/auth/auth-config-provider";
+import { CartProvider } from "@/hooks/use-cart";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="h-full">
-        <AuthConfigProvider>{children}</AuthConfigProvider>
+        <AuthConfigProvider>
+          <CartProvider>{children}</CartProvider>
+        </AuthConfigProvider>
       </body>
     </html>
   );

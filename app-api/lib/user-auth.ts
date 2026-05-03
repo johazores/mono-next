@@ -77,9 +77,11 @@ async function getClerkUserSession(
   const env = getAppEnv();
 
   // Look up by clerkId first, then fall back to email
-  let user = await prisma.user.findUnique({
-    where: { env_clerkId: { env, clerkId: clerkPayload.sub } },
-  });
+  let user = clerkPayload.sub
+    ? await prisma.user.findFirst({
+        where: { clerkId: clerkPayload.sub },
+      })
+    : null;
 
   if (!user) {
     // Check if a user with this email already exists (e.g. migrated from credentials)

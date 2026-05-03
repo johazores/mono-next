@@ -1,10 +1,24 @@
 import { settingRepository } from "@/repositories/setting-repository";
-import type { AuthConfig, AuthProvider, PublicAuthConfig } from "@/types";
+import type {
+  AuthConfig,
+  AuthProvider,
+  PublicAuthConfig,
+  PaymentConfig,
+  PaymentMode,
+  PaymentProviderName,
+  PublicPaymentConfig,
+} from "@/types";
 
 const ALLOWED_KEYS = new Set([
   "auth.provider",
   "auth.clerkPublishableKey",
   "auth.clerkSecretKey",
+  "payment.provider",
+  "payment.mode",
+  "payment.stripe.testPublicKey",
+  "payment.stripe.testSecretKey",
+  "payment.stripe.livePublicKey",
+  "payment.stripe.liveSecretKey",
 ]);
 
 const AUTH_DEFAULTS: AuthConfig = {
@@ -29,6 +43,24 @@ export const settingService = {
       if (!valid.includes(value as AuthProvider)) {
         throw new Error(
           `Invalid auth provider. Must be one of: ${valid.join(", ")}`,
+        );
+      }
+    }
+
+    if (key === "payment.provider") {
+      const valid: PaymentProviderName[] = ["stripe", "woocommerce"];
+      if (!valid.includes(value as PaymentProviderName)) {
+        throw new Error(
+          `Invalid payment provider. Must be one of: ${valid.join(", ")}`,
+        );
+      }
+    }
+
+    if (key === "payment.mode") {
+      const valid: PaymentMode[] = ["test", "live"];
+      if (!valid.includes(value as PaymentMode)) {
+        throw new Error(
+          `Invalid payment mode. Must be one of: ${valid.join(", ")}`,
         );
       }
     }
@@ -67,6 +99,43 @@ export const settingService = {
     return {
       provider: config.provider,
       clerkPublishableKey: config.clerkPublishableKey,
+    };
+  },
+
+  async getPaymentConfig(): Promise<PaymentConfig> {
+    const keys = [
+      "payment.provider",
+      "payment.mode",
+      "payment.stripe.testPublicKey",
+      "payment.stripe.testSecretKey",
+      "payment.stripe.livePublicKey",
+      "payment.stripe.liveSecretKey",
+    ];
+    const records = await settingRepository.getMany(keys);
+    const map = new Map(records.map((r) => [r.key, r.value]));
+
+    const provider =
+      (map.get("payment.provider") as PaymentProviderName) ?? "stripe";
+    const mode = (map.get("payment.mode") as PaymentMode) ?? "test";
+
+    const publicKey =
+      mode === "test"
+        ? ((map.get("payment.stripe.testPublicKey") as string) ?? "")
+        : ((map.get("payment.stripe.livePublicKey") as string) ?? "");
+    const secretKey =
+      mode === "test"
+        ? ((map.get("payment.stripe.testSecretKey") as string) ?? "")
+        : ((map.get("payment.stripe.liveSecretKey") as string) ?? "");
+
+    return { provider, mode, publicKey, secretKey };
+  },
+
+  async getPublicPaymentConfig(): Promise<PublicPaymentConfig> {
+    const config = await this.getPaymentConfig();
+    return {
+      provider: config.provider,
+      mode: config.mode,
+      publicKey: config.publicKey,
     };
   },
 };

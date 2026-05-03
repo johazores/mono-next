@@ -5,9 +5,12 @@ export type UserRecord = {
   email: string;
   clerkId: string | null;
   name: string;
+  stripeCustomerId: string | null;
   status: AccountStatus;
   parentId: string | null;
   ancestors: string[];
+  failedLoginAttempts: number;
+  lockedUntil: Date | null;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

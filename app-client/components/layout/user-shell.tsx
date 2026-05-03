@@ -12,6 +12,7 @@ const baseNavigation: NavItem[] = [
   { label: "Features", href: "/features" },
   { label: "Sub-Users", href: "/sub-users" },
   { label: "Purchases", href: "/purchases" },
+  { label: "Downloads", href: "/downloads" },
 ];
 
 export function UserShell({

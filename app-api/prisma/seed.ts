@@ -320,6 +320,12 @@ async function main() {
     { key: "auth.provider", value: "credentials" },
     { key: "auth.clerkPublishableKey", value: "" },
     { key: "auth.clerkSecretKey", value: "" },
+    { key: "payment.provider", value: "stripe" },
+    { key: "payment.mode", value: "test" },
+    { key: "payment.stripe.testPublicKey", value: "" },
+    { key: "payment.stripe.testSecretKey", value: "" },
+    { key: "payment.stripe.livePublicKey", value: "" },
+    { key: "payment.stripe.liveSecretKey", value: "" },
   ];
   for (const setting of defaultSettings) {
     await prisma.siteSetting.upsert({
@@ -329,6 +335,240 @@ async function main() {
     });
   }
   console.log("Default site settings seeded");
+
+  // Seed product prices (multiple prices per product with date ranges)
+  const pricesToSeed = [
+    // Free plan — $0 test price
+    {
+      productSlug: "free",
+      label: "Free Plan",
+      stripePriceId: "price_test_free",
+      mode: "test" as const,
+      amount: 0,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    // Starter — monthly test price
+    {
+      productSlug: "starter",
+      label: "Starter Monthly",
+      stripePriceId: "price_test_starter_monthly",
+      mode: "test" as const,
+      amount: 9.99,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    // Starter — yearly test price (discounted)
+    {
+      productSlug: "starter",
+      label: "Starter Yearly",
+      stripePriceId: "price_test_starter_yearly",
+      mode: "test" as const,
+      amount: 99.99,
+      currency: "USD",
+      interval: "year",
+      isDefault: false,
+    },
+    // Pro — monthly test price
+    {
+      productSlug: "pro",
+      label: "Pro Monthly",
+      stripePriceId: "price_test_pro_monthly",
+      mode: "test" as const,
+      amount: 29.99,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    // Enterprise — monthly test price
+    {
+      productSlug: "enterprise",
+      label: "Enterprise Monthly",
+      stripePriceId: "price_test_enterprise_monthly",
+      mode: "test" as const,
+      amount: 99.99,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    // Premium — monthly test price
+    {
+      productSlug: "premium-membership",
+      label: "Premium Monthly",
+      stripePriceId: "price_test_premium_monthly",
+      mode: "test" as const,
+      amount: 19.99,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    // SEO Report — one-time test price
+    {
+      productSlug: "seo-report",
+      label: "SEO Report",
+      stripePriceId: "price_test_seo_report",
+      mode: "test" as const,
+      amount: 49.99,
+      currency: "USD",
+      interval: null,
+      isDefault: true,
+    },
+    // API Access Pass — one-time test price
+    {
+      productSlug: "api-access-pass",
+      label: "API Access Pass",
+      stripePriceId: "price_test_api_access",
+      mode: "test" as const,
+      amount: 199.99,
+      currency: "USD",
+      interval: null,
+      isDefault: true,
+    },
+    // --- Live-mode placeholder prices (replace stripePriceId with real Stripe IDs) ---
+    {
+      productSlug: "free",
+      label: "Free Plan",
+      stripePriceId: "price_live_free",
+      mode: "live" as const,
+      amount: 0,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    {
+      productSlug: "starter",
+      label: "Starter Monthly",
+      stripePriceId: "price_live_starter_monthly",
+      mode: "live" as const,
+      amount: 9.99,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    {
+      productSlug: "starter",
+      label: "Starter Yearly",
+      stripePriceId: "price_live_starter_yearly",
+      mode: "live" as const,
+      amount: 99.99,
+      currency: "USD",
+      interval: "year",
+      isDefault: false,
+    },
+    {
+      productSlug: "pro",
+      label: "Pro Monthly",
+      stripePriceId: "price_live_pro_monthly",
+      mode: "live" as const,
+      amount: 29.99,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    {
+      productSlug: "enterprise",
+      label: "Enterprise Monthly",
+      stripePriceId: "price_live_enterprise_monthly",
+      mode: "live" as const,
+      amount: 99.99,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    {
+      productSlug: "premium-membership",
+      label: "Premium Monthly",
+      stripePriceId: "price_live_premium_monthly",
+      mode: "live" as const,
+      amount: 19.99,
+      currency: "USD",
+      interval: "month",
+      isDefault: true,
+    },
+    {
+      productSlug: "seo-report",
+      label: "SEO Report",
+      stripePriceId: "price_live_seo_report",
+      mode: "live" as const,
+      amount: 49.99,
+      currency: "USD",
+      interval: null,
+      isDefault: true,
+    },
+    {
+      productSlug: "api-access-pass",
+      label: "API Access Pass",
+      stripePriceId: "price_live_api_access",
+      mode: "live" as const,
+      amount: 199.99,
+      currency: "USD",
+      interval: null,
+      isDefault: true,
+    },
+  ];
+
+  for (const p of pricesToSeed) {
+    const productId = seededProducts[p.productSlug];
+    if (!productId) continue;
+
+    // Find existing price by product + mode + label to upsert
+    const existing = await prisma.productPrice.findFirst({
+      where: { productId, mode: p.mode, label: p.label },
+    });
+
+    if (existing) {
+      await prisma.productPrice.update({
+        where: { id: existing.id },
+        data: {
+          stripePriceId: p.stripePriceId,
+          amount: p.amount,
+          currency: p.currency,
+          interval: p.interval,
+          isDefault: p.isDefault,
+        },
+      });
+    } else {
+      await prisma.productPrice.create({
+        data: {
+          productId,
+          label: p.label,
+          stripePriceId: p.stripePriceId,
+          mode: p.mode,
+          amount: p.amount,
+          currency: p.currency,
+          interval: p.interval,
+          startDate: new Date(),
+          isDefault: p.isDefault,
+        },
+      });
+    }
+    console.log(`ProductPrice seeded: ${p.label} (${p.mode})`);
+  }
+
+  // Seed sample purchase file for demo user's starter subscription
+  const sampleFileContent = Buffer.from(
+    "Welcome to Starter! This is your getting-started guide.",
+    "utf-8",
+  ).toString("base64");
+  const existingFile = await prisma.purchaseFile.findFirst({
+    where: { purchaseId: purchase.id, fileName: "starter-guide.txt" },
+  });
+  if (!existingFile) {
+    await prisma.purchaseFile.create({
+      data: {
+        purchaseId: purchase.id,
+        fileName: "starter-guide.txt",
+        mimeType: "text/plain",
+        sizeBytes: Buffer.from(sampleFileContent, "base64").length,
+        data: sampleFileContent,
+      },
+    });
+    console.log("PurchaseFile seeded: starter-guide.txt for Demo User");
+  } else {
+    console.log("PurchaseFile already exists: starter-guide.txt");
+  }
 }
 
 main()

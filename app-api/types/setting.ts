@@ -15,6 +15,7 @@ export type PublicAuthConfig = {
 
 export type SettingRecord = {
   id: string;
+  env: string;
   key: string;
   value: unknown;
   createdAt: Date;

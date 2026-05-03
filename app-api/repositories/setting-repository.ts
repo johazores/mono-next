@@ -9,11 +9,16 @@ export const settingRepository = {
   },
 
   async getMany(keys: string[]) {
-    return prisma.siteSetting.findMany({ where: { key: { in: keys } } });
+    return prisma.siteSetting.findMany({
+      where: { key: { in: keys } },
+    });
   },
 
   async getAll() {
-    return prisma.siteSetting.findMany({ orderBy: { key: "asc" } });
+    return prisma.siteSetting.findMany({
+      where: {},
+      orderBy: { key: "asc" },
+    });
   },
 
   async set(key: string, value: unknown) {

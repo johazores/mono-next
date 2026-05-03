@@ -9,6 +9,7 @@ export function ResourceList({
   getSubtitle,
   onEdit,
   onDelete,
+  renderItemActions,
 }: ResourceListProps) {
   if (loading) {
     return <p className="text-sm text-gray-500 py-8 text-center">Loading...</p>;
@@ -43,6 +44,7 @@ export function ResourceList({
             )}
           </div>
           <div className="flex gap-2 shrink-0">
+            {renderItemActions && renderItemActions(item)}
             <Button variant="secondary" size="sm" onClick={() => onEdit(item)}>
               Edit
             </Button>

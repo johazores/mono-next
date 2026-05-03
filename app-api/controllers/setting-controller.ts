@@ -22,7 +22,7 @@ export async function settingCollectionController(
     return sendOk(res, { items: settings });
   }
 
-  sendError(res, "Method not allowed.", 405);
+  return sendError(res, "Method not allowed.", 405);
 }
 
 export async function settingItemController(
@@ -72,7 +72,7 @@ export async function settingItemController(
     }
   }
 
-  sendError(res, "Method not allowed.", 405);
+  return sendError(res, "Method not allowed.", 405);
 }
 
 export async function publicAuthConfigController(
@@ -89,5 +89,22 @@ export async function publicAuthConfigController(
   }
 
   const config = await settingService.getPublicAuthConfig();
+  sendOk(res, config);
+}
+
+export async function publicPaymentConfigController(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+
+  if (req.method !== "GET") {
+    return sendError(res, "Method not allowed.", 405);
+  }
+
+  const config = await settingService.getPublicPaymentConfig();
   sendOk(res, config);
 }
