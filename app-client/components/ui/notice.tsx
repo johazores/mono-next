@@ -1,13 +1,15 @@
 type NoticeProps = {
   message: string;
-  variant?: "success" | "error";
+  variant?: "success" | "error" | "info";
 };
 
 export function Notice({ message, variant = "success" }: NoticeProps) {
   const styles =
     variant === "error"
       ? "bg-red-50 text-red-700"
-      : "bg-green-50 text-green-700";
+      : variant === "info"
+        ? "bg-blue-50 text-blue-700"
+        : "bg-green-50 text-green-700";
 
   return (
     <div className={`rounded-lg px-4 py-3 text-sm ${styles}`} role="alert">

@@ -4,7 +4,8 @@ export type FieldType =
   | "textarea"
   | "number"
   | "date"
-  | "select";
+  | "select"
+  | "checkboxes";
 
 export type EditorSection = "Basics" | "Content" | "Details";
 
@@ -17,6 +18,8 @@ export type ResourceField = {
   help?: string;
   section?: EditorSection;
   fullWidth?: boolean;
+  /** URL to load options dynamically (for checkboxes). Response: { ok, data: { items: [{ key, description, category }] } } */
+  optionsEndpoint?: string;
 };
 
 export type ResourceItem = Record<string, unknown> & {

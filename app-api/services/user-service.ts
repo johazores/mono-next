@@ -1,10 +1,11 @@
 import { hashPassword, verifyPassword, DUMMY_HASH } from "@/lib/password";
 import { userRepository } from "@/repositories/user-repository";
-import { subscriptionRepository } from "@/repositories/subscription-repository";
-import { planRepository } from "@/repositories/plan-repository";
+import { purchaseRepository } from "@/repositories/purchase-repository";
+import { productRepository } from "@/repositories/product-repository";
 import type {
   UserRecord,
   CreateUserInput,
+  CreateSubUserInput,
   UpdateUserInput,
   UpdateUserProfileInput,
   AccountStatus,
@@ -30,13 +31,13 @@ async function enrichWithPlan(
   user: UserRecord | null,
 ): Promise<UserRecord | null> {
   if (!user) return null;
-  const sub = await subscriptionRepository.findActiveByUserId(user.id);
+  const sub = await purchaseRepository.findActiveSubscription(user.id);
   if (sub) {
     user.activePlan = {
-      id: sub.plan.id,
-      name: sub.plan.name,
-      slug: sub.plan.slug,
-      subscriptionId: sub.id,
+      id: sub.product.id,
+      name: sub.product.name,
+      slug: sub.product.slug,
+      purchaseId: sub.id,
       endDate: sub.endDate,
     };
   } else {
@@ -100,13 +101,27 @@ export const userService = {
     const safe = safeUser(user);
     if (!safe) return null;
 
-    // Assign free plan subscription
-    const freePlan = await planRepository.findBySlug("free");
-    if (freePlan) {
-      await subscriptionRepository.create({
+    // Assign free product subscription
+    const freeProduct = await productRepository.findBySlug("free");
+    if (freeProduct) {
+      const purchase = await purchaseRepository.create({
         user: { connect: { id: safe.id } },
-        plan: { connect: { id: freePlan.id } },
+        product: { connect: { id: freeProduct.id } },
+        amount: 0,
+        currency: freeProduct.currency,
+        status: "active",
       });
+
+      // Grant membership from free product features
+      if (freeProduct.accessKeys.length > 0) {
+        const { membershipService } =
+          await import("@/services/membership-service");
+        await membershipService.grantFromPurchase(
+          safe.id,
+          purchase.id,
+          freeProduct.accessKeys,
+        );
+      }
     }
 
     return enrichWithPlan(safe);
@@ -184,5 +199,135 @@ export const userService = {
 
     const user = await userRepository.update(id, data);
     return enrichWithPlan(safeUser(user));
+  },
+
+  async createSubUser(
+    parentId: string,
+    input: CreateSubUserInput,
+  ): Promise<UserRecord | null> {
+    const parent = await userRepository.findById(parentId);
+    if (!parent) throw new Error("Parent user not found.");
+
+    // Sub-users cannot create their own sub-users
+    const parentRecord = parent as UserRecord;
+    if (parentRecord.parentId) {
+      throw new Error("Sub-users cannot create their own sub-users.");
+    }
+
+    // Resolve the root ancestor's subscription to check sub-user limits
+    const rootId = parentId;
+    const rootSub = await purchaseRepository.findActiveSubscription(rootId);
+    if (!rootSub)
+      throw new Error("No active subscription. Cannot create sub-users.");
+
+    const product = rootSub.product;
+    const maxSubUsers = (product as Record<string, unknown>)
+      .maxSubUsers as number;
+
+    if (maxSubUsers === 0) {
+      throw new Error("Your plan does not allow sub-users.");
+    }
+
+    if (maxSubUsers > 0) {
+      // Count all descendants under the root, not just direct children
+      const descendants = await userRepository.findDescendants(rootId);
+      if (descendants.length >= maxSubUsers) {
+        throw new Error(
+          `Sub-user limit reached (${maxSubUsers}). Upgrade your plan for more.`,
+        );
+      }
+    }
+    // maxSubUsers === -1 means unlimited
+
+    const email = cleanEmail(input.email);
+    if (!input.name || !email || !input.password) {
+      throw new Error("Name, email, and password are required.");
+    }
+
+    const ancestors = [parentId];
+
+    const user = await userRepository.create({
+      name: input.name,
+      email,
+      passwordHash: hashPassword(input.password),
+      parent: { connect: { id: parentId } },
+      ancestors,
+    });
+
+    const safe = safeUser(user);
+    if (!safe) return null;
+
+    // Sub-users inherit parent's subscription — assign same product
+    const subPurchase = await purchaseRepository.create({
+      user: { connect: { id: safe.id } },
+      product: { connect: { id: rootSub.productId } },
+      amount: 0,
+      currency: rootSub.currency,
+      status: "active",
+    });
+
+    // Grant membership from product features
+    const accessKeys = (product as Record<string, unknown>)
+      .accessKeys as string[];
+    if (accessKeys?.length > 0) {
+      const { membershipService } =
+        await import("@/services/membership-service");
+      await membershipService.grantFromPurchase(
+        safe.id,
+        subPurchase.id,
+        accessKeys,
+      );
+    }
+
+    return enrichWithPlan(safe);
+  },
+
+  async listSubUsers(parentId: string): Promise<UserRecord[]> {
+    const children = await userRepository.findByParentId(parentId);
+    const enriched = await Promise.all(
+      (children as UserRecord[]).map(async (u) => {
+        const user = await enrichWithPlan(u);
+        if (!user) return null;
+        const purchases = await purchaseRepository.findByUserId(user.id);
+        (user as UserRecord & { purchaseCount?: number }).purchaseCount =
+          purchases.length;
+        return user;
+      }),
+    );
+    return enriched.filter(Boolean) as UserRecord[];
+  },
+
+  async deleteSubUser(
+    parentId: string,
+    subUserId: string,
+  ): Promise<UserRecord | null> {
+    const subUser = await userRepository.findById(subUserId);
+    if (!subUser) throw new Error("Sub-user not found.");
+
+    const record = subUser as UserRecord;
+    if (record.parentId !== parentId) {
+      throw new Error("This user is not your sub-user.");
+    }
+
+    // Check if sub-user has children — prevent orphaning
+    const childCount = await userRepository.countChildren(subUserId);
+    if (childCount > 0) {
+      throw new Error(
+        "Cannot delete a sub-user that has their own sub-users. Remove their sub-users first.",
+      );
+    }
+
+    // If sub-user has purchases, disable instead of deleting to preserve
+    // their purchase records and any purchase-based feature access
+    const purchases = await purchaseRepository.findByUserId(subUserId);
+    if (purchases.length > 0) {
+      const updated = await userRepository.update(subUserId, {
+        status: "disabled",
+      });
+      return safeUser(updated);
+    }
+
+    const deleted = await userRepository.delete(subUserId);
+    return safeUser(deleted);
   },
 };

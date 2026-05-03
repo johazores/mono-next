@@ -40,9 +40,12 @@ app-api/
 ├── types/             <- Shared type definitions (barrel-exported via index.ts)
 │   ├── auth.ts        <- Role, AccountStatus, AuthUser, AuthSession (admin auth)
 │   ├── admin.ts       <- AdminRecord, CreateAdminInput, UpdateAdminInput, UpdateAdminProfileInput
-│   ├── user.ts        <- UserRecord, UserAuthSession, UpdateUserProfileInput
-│   ├── plan.ts        <- PlanRecord, CreatePlanInput, UpdatePlanInput
-│   ├── subscription.ts <- SubscriptionStatus, SubscriptionRecord
+│   ├── user.ts        <- UserRecord, UserAuthSession, CreateSubUserInput, UpdateUserProfileInput
+│   ├── product.ts     <- ProductType, PaymentModel, ProductRecord, CreateProductInput, UpdateProductInput
+│   ├── purchase.ts    <- PurchaseStatus, PurchaseRecord
+│   ├── membership.ts  <- MembershipType, MembershipStatus, MembershipRecord
+│   ├── feature.ts     <- FeatureRecord, FeatureDefinition, FeatureCheckResult
+│   ├── report.ts      <- RevenueSummary, SubscriptionStats, PurchaseStats, UserStats, UserActivityReport
 │   ├── activity-log.ts <- ActivityAction, ActivityActor, ActivityLogRecord, ActivityLogFilter
 │   └── response.ts    <- ApiResponse<T>, ListResponse<T>
 ├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf, request-utils)
@@ -70,7 +73,10 @@ app-api/
 - **Activity logging**: Fire-and-forget audit trail via `logActivity()` — captures IP, user agent, HTTP method, request path
 - **Dual cookie-based sessions**: Separate `admin_session` (7d) and `user_session` (14d) cookies
 - **Secure admin URLs**: Admin auth endpoints served from `/api/panel/*` (non-predictable path)
-- **Dynamic subscription plans**: Plans stored in DB, managed via admin API. Users linked via Subscription model with full history.
+- **Product and purchase management**: Products stored in DB with type (physical, digital, membership) and payment model (one-time, recurring). Users linked via Purchase model with full history. Recurring purchases serve as subscriptions.
+- **User hierarchy**: Users can create sub-users (one level only). Sub-users inherit the parent's plan features but cannot create their own sub-users. The `parentId` and `ancestors` fields on the User model track the relationship.
+- **Membership-based access**: Purchases grant feature access via Membership records. Feature checks resolve direct membership keys and inherited parent features.
+- **Feature flags**: Feature definitions stored in DB with in-memory cache. `featureService.checkAccess()` checks direct and inherited sources.
 - **Prisma singleton**: `globalThis` caching prevents connection leaks during hot reload
 
 ### Database
@@ -80,10 +86,12 @@ app-api/
 - **Collections**:
   - `Admin` — CMS admin accounts (name, email, passwordHash, role, status, failedLoginAttempts, lockedUntil)
   - `AdminSession` — Admin auth sessions (adminId, tokenHash, expiresAt)
-  - `User` — Application users (name, email, passwordHash, status, failedLoginAttempts, lockedUntil)
+  - `User` — Application users (name, email, passwordHash, status, parentId, ancestors, failedLoginAttempts, lockedUntil)
   - `UserSession` — User auth sessions (userId, tokenHash, expiresAt)
-  - `Plan` — Subscription plans (name, slug, description, price, currency, interval, features, isActive, sortOrder)
-  - `Subscription` — User subscription history (userId, planId, status, externalId, startDate, endDate, cancelledAt, metadata)
+  - `Product` — Purchasable items (name, slug, description, type, price, currency, paymentModel, interval, maxSubUsers, fileUrl, accessKeys, isActive, sortOrder)
+  - `Purchase` — User purchases and subscriptions (userId, productId, status, amount, currency, externalId, startDate, endDate, cancelledAt, metadata)
+  - `Membership` — Feature access grants from purchases (userId, type, sourceId, featureKeys, status, expiresAt)
+  - `Feature` — Feature definitions (key, description, category, isActive, sortOrder)
   - `ActivityLog` — Audit trail (actor, actorId, actorEmail, action, resource, resourceId, metadata, ip, userAgent, method, path)
 - **Schema location**: `app-api/prisma/schema.prisma`
 
@@ -100,16 +108,21 @@ app-client/
 │   ├── (admin)/       <- Protected admin pages (auth guard in layout)
 │   │   ├── layout.tsx <- Auth check, redirects to /login if unauthenticated
 │   │   └── admin/     <- All admin pages under /admin/* prefix
-│   │       ├── page.tsx   <- Dashboard (/admin)
-│   │       ├── admins/    <- Admin account management (/admin/admins)
-│   │       ├── users/     <- User management (/admin/users)
-│   │       ├── plans/     <- Subscription plan management (/admin/plans)
-│   │       ├── activity/  <- Activity log viewer (/admin/activity)
-│   │       └── profile/   <- Admin profile management (/admin/profile)
+│   │       ├── page.tsx       <- Dashboard (/admin)
+│   │       ├── admins/        <- Admin account management (/admin/admins)
+│   │       ├── users/         <- User management (/admin/users)
+│   │       ├── products/      <- Product management (/admin/products)
+│   │       ├── features/      <- Feature flag management (/admin/features)
+│   │       ├── reports/       <- Reports dashboard (/admin/reports)
+│   │       ├── activity/      <- Activity log viewer (/admin/activity)
+│   │       └── profile/       <- Admin profile management (/admin/profile)
 │   ├── (user)/        <- Protected user pages (auth guard in layout)
 │   │   ├── layout.tsx <- Auth check, redirects to /user-login
 │   │   ├── dashboard/ <- User dashboard
-│   │   └── account/   <- Profile edit, password change, active plan info
+│   │   ├── account/   <- Profile edit, password change, active plan info
+│   │   ├── features/  <- View enabled features by source
+│   │   ├── sub-users/ <- Manage sub-users (hidden for sub-user accounts)
+│   │   └── purchases/ <- Purchase history
 │   └── (public)/      <- Public pages
 │       ├── layout.tsx <- Minimal layout
 │       ├── login/     <- Admin login form
@@ -168,11 +181,11 @@ fetch(`${NEXT_PUBLIC_API_URL}/api/admins`, { credentials: "include" })
 
 ### API-specific
 
-| Command            | Description                              |
-| ------------------ | ---------------------------------------- |
-| `pnpm prisma:push` | Push schema to MongoDB                   |
-| `pnpm db:seed`     | Seed admin, demo user, and default plans |
-| `pnpm setup`       | Full install + push + seed               |
+| Command            | Description                                   |
+| ------------------ | --------------------------------------------- |
+| `pnpm prisma:push` | Push schema to MongoDB                        |
+| `pnpm db:seed`     | Seed admin, demo user, products, and features |
+| `pnpm setup`       | Full install + push + seed                    |
 
 ---
 

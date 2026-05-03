@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useState } from "react";
+import { apiGet } from "@/services/api-client";
 import type { ResourceField } from "@/types";
 
 type FieldRendererProps = {
@@ -19,6 +21,17 @@ const inputClass =
 export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
   const displayValue = value == null ? "" : String(value);
   const wrapperClass = field.fullWidth ? "col-span-2" : "";
+
+  if (field.type === "checkboxes") {
+    return (
+      <CheckboxesField
+        field={field}
+        value={value}
+        onChange={onChange}
+        wrapperClass={wrapperClass}
+      />
+    );
+  }
 
   if (field.type === "textarea") {
     return (
@@ -77,5 +90,139 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
         <span className="text-xs text-gray-500">{field.help}</span>
       )}
     </label>
+  );
+}
+
+// --- Checkboxes sub-component ---
+
+type DynamicOption = { key: string; description: string; category: string };
+
+function CheckboxesField({
+  field,
+  value,
+  onChange,
+  wrapperClass,
+}: {
+  field: ResourceField;
+  value: unknown;
+  onChange: (value: unknown) => void;
+  wrapperClass: string;
+}) {
+  const [options, setOptions] = useState<DynamicOption[]>([]);
+  const [loadingOpts, setLoadingOpts] = useState(false);
+
+  // Parse current value to a Set of selected keys
+  const selected = (() => {
+    if (Array.isArray(value)) return new Set(value as string[]);
+    if (typeof value === "string" && value.trim()) {
+      return new Set(
+        value
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+      );
+    }
+    return new Set<string>();
+  })();
+
+  const loadOptions = useCallback(async () => {
+    if (!field.optionsEndpoint) {
+      // Fall back to static options
+      setOptions(
+        (field.options ?? []).map((o) => ({
+          key: o,
+          description: field.optionLabels?.[o] ?? o,
+          category: "",
+        })),
+      );
+      return;
+    }
+    setLoadingOpts(true);
+    try {
+      const res = await apiGet<{ items: DynamicOption[] }>(
+        field.optionsEndpoint,
+      );
+      if (res.ok && res.data?.items) {
+        setOptions(res.data.items);
+      }
+    } catch {
+      // Silently fall back to empty
+    } finally {
+      setLoadingOpts(false);
+    }
+  }, [field.optionsEndpoint, field.options, field.optionLabels]);
+
+  useEffect(() => {
+    loadOptions();
+  }, [loadOptions]);
+
+  function toggle(key: string) {
+    const next = new Set(selected);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    onChange(Array.from(next));
+  }
+
+  // Group by category
+  const grouped: Record<string, DynamicOption[]> = {};
+  for (const opt of options) {
+    const cat = opt.category || "other";
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(opt);
+  }
+
+  return (
+    <div className={`grid gap-1.5 ${wrapperClass || "col-span-2"}`}>
+      <span className="text-sm font-medium text-gray-700">{field.label}</span>
+      {field.help && (
+        <span className="text-xs text-gray-500">{field.help}</span>
+      )}
+      {loadingOpts && (
+        <span className="text-xs text-gray-400">Loading&hellip;</span>
+      )}
+      <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+        {Object.entries(grouped).map(([cat, items]) => (
+          <div key={cat}>
+            {Object.keys(grouped).length > 1 && (
+              <div className="sticky top-0 bg-gray-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {cat}
+              </div>
+            )}
+            {items.map((opt) => (
+              <label
+                key={opt.key}
+                className="flex cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-gray-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(opt.key)}
+                  onChange={() => toggle(opt.key)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="min-w-0 text-sm text-gray-800">
+                  {opt.description || opt.key}
+                </span>
+                <span className="ml-auto shrink-0 text-xs text-gray-400">
+                  {opt.key}
+                </span>
+              </label>
+            ))}
+          </div>
+        ))}
+        {!loadingOpts && options.length === 0 && (
+          <p className="px-3 py-2 text-xs text-gray-400">
+            No features available.
+          </p>
+        )}
+      </div>
+      {selected.size > 0 && (
+        <p className="text-xs text-gray-500">
+          {selected.size} selected: {Array.from(selected).join(", ")}
+        </p>
+      )}
+    </div>
   );
 }

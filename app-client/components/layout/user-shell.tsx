@@ -10,9 +10,12 @@ type NavItem = {
   href: string;
 };
 
-const navigation: NavItem[] = [
+const baseNavigation: NavItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Account", href: "/account" },
+  { label: "Features", href: "/features" },
+  { label: "Sub-Users", href: "/sub-users" },
+  { label: "Purchases", href: "/purchases" },
 ];
 
 export function UserShell({
@@ -24,6 +27,11 @@ export function UserShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Sub-users don't see the Sub-Users nav link
+  const navigation = user.parentId
+    ? baseNavigation.filter((item) => item.href !== "/sub-users")
+    : baseNavigation;
 
   async function handleLogout() {
     await userAuthService.logout();
@@ -67,6 +75,11 @@ export function UserShell({
             {user.name}
           </p>
           <p className="truncate px-3 text-xs text-gray-400">{user.email}</p>
+          {user.parent && (
+            <p className="mt-1 truncate px-3 text-xs text-gray-400">
+              Account owner: {user.parent.name}
+            </p>
+          )}
           <button
             onClick={handleLogout}
             className="mt-2 w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100"

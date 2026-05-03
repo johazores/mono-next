@@ -15,11 +15,18 @@ export type ActivityAction =
   | "user.update"
   | "user.delete"
   | "profile.update"
-  | "plan.create"
-  | "plan.update"
-  | "plan.delete"
-  | "subscription.assign"
-  | "subscription.cancel";
+  | "product.create"
+  | "product.update"
+  | "product.delete"
+  | "purchase.create"
+  | "subscription.cancel"
+  | "sub-user.create"
+  | "sub-user.delete"
+  | "membership.grant"
+  | "membership.revoke"
+  | "feature.create"
+  | "feature.update"
+  | "feature.delete";
 
 export type ActivityActor = "admin" | "user" | "system";
 

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "@/lib/admin-auth";
 import { requireUser } from "@/lib/user-auth";
 import { sendError, sendOk } from "@/lib/api-response";
-import { subscriptionService } from "@/services/subscription-service";
+import { purchaseService } from "@/services/purchase-service";
 import { logActivity } from "@/lib/activity-logger";
 import { verifyCsrf } from "@/lib/csrf";
 
@@ -23,32 +23,32 @@ export async function userSubscriptionController(
 
   try {
     if (req.method === "GET") {
-      const history = await subscriptionService.getHistory(userId);
+      const history = await purchaseService.getHistory(userId);
       return sendOk(res, { items: history });
     }
 
     if (!verifyCsrf(req, res)) return;
 
     if (req.method === "POST") {
-      const { planId, externalId, endDate } = req.body ?? {};
-      if (!planId) return sendError(res, "Plan ID is required.", 400);
+      const { productId, externalId, endDate } = req.body ?? {};
+      if (!productId) return sendError(res, "Product ID is required.", 400);
 
-      const sub = await subscriptionService.assign(userId, planId, {
+      const purchase = await purchaseService.subscribe(userId, productId, {
         externalId,
         endDate,
       });
-      await logActivity(req, "subscription.assign", {
-        resource: "subscription",
-        resourceId: sub.id,
-        metadata: { userId, planId },
+      await logActivity(req, "purchase.create", {
+        resource: "purchase",
+        resourceId: purchase.id,
+        metadata: { userId, productId },
       });
-      return sendOk(res, sub, 201);
+      return sendOk(res, purchase, 201);
     }
 
     if (req.method === "DELETE") {
-      await subscriptionService.cancel(userId);
+      await purchaseService.cancelSubscription(userId);
       await logActivity(req, "subscription.cancel", {
-        resource: "subscription",
+        resource: "purchase",
         metadata: { userId },
       });
       return sendOk(res, null);
@@ -79,9 +79,7 @@ export async function ownSubscriptionController(
     return sendError(res, "Method not allowed.", 405);
   }
 
-  const active = await subscriptionService.getActiveSubscription(
-    session.user.id,
-  );
-  const history = await subscriptionService.getHistory(session.user.id);
+  const active = await purchaseService.getActiveSubscription(session.user.id);
+  const history = await purchaseService.getHistory(session.user.id);
   sendOk(res, { active, history });
 }

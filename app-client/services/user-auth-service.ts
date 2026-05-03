@@ -5,6 +5,8 @@ export type AppUser = {
   name: string;
   email: string;
   status: string;
+  parentId: string | null;
+  parent: { name: string; email: string } | null;
   activePlan: {
     name: string;
     slug: string;

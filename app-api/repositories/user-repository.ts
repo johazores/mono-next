@@ -6,6 +6,8 @@ const safeSelect = {
   email: true,
   name: true,
   status: true,
+  parentId: true,
+  ancestors: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
@@ -31,6 +33,23 @@ export const userRepository = {
   },
   findByIdWithPassword(id: string) {
     return prisma.user.findUnique({ where: { id } });
+  },
+  findByParentId(parentId: string) {
+    return prisma.user.findMany({
+      where: { parentId },
+      orderBy: [{ createdAt: "desc" }],
+      select: safeSelect,
+    });
+  },
+  countChildren(parentId: string) {
+    return prisma.user.count({ where: { parentId } });
+  },
+  findDescendants(ancestorId: string) {
+    return prisma.user.findMany({
+      where: { ancestors: { has: ancestorId } },
+      orderBy: [{ createdAt: "desc" }],
+      select: safeSelect,
+    });
   },
   create(data: Prisma.UserCreateInput) {
     return prisma.user.create({ data });

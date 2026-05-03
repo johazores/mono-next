@@ -3,7 +3,7 @@ export default function UserDashboardPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
       <p className="mt-2 text-sm text-gray-600">
-        Welcome to your dashboard. Manage your account and subscription from the
+        Welcome to your dashboard. Manage your account and products from the
         sidebar.
       </p>
     </div>

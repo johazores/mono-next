@@ -29,15 +29,21 @@ mono-next/
 ### app-api
 
 Backend API server with dual authentication (admin sessions and user sessions),
-admin CRUD, user CRUD, dynamic subscription plans with history, CSRF protection,
-security headers, and a layered architecture (controller, service, repository).
+admin CRUD, user CRUD, dynamic subscription plans with history, feature flags,
+product and purchase management, membership-based access control, user hierarchy
+(sub-users), reporting, CSRF protection, security headers, and a layered
+architecture (controller, service, repository).
+
+Sub-users inherit their parent's plan features but cannot create sub-users of
+their own.
 
 ### app-client
 
 Frontend application with an admin panel and a user dashboard.
 Admin-guarded routes redirect to `/login`. User-guarded routes redirect to
-`/user-login`. Supports user registration, subscription plan management,
-and activity log viewing.
+`/user-login`. Features include user registration, subscription plan management,
+product purchases, feature access views, sub-user management (account owners
+only), reporting, and activity log viewing.
 
 ## Getting Started
 

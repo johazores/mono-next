@@ -75,12 +75,28 @@ export async function getUserSession(
     return null;
   }
 
-  // Fetch active subscription with plan info
-  const activeSub = await prisma.subscription.findFirst({
-    where: { userId: session.user.id, status: "active" },
-    include: { plan: { select: { name: true, slug: true } } },
+  // Fetch active subscription (recurring purchase)
+  const activeSub = await prisma.purchase.findFirst({
+    where: {
+      userId: session.user.id,
+      status: "active",
+      product: { paymentModel: "recurring" },
+    },
+    include: { product: { select: { name: true, slug: true } } },
     orderBy: { createdAt: "desc" },
   });
+
+  // Fetch parent info if this is a sub-user
+  let parentInfo: { name: string; email: string } | null = null;
+  if (session.user.parentId) {
+    const parentUser = await prisma.user.findUnique({
+      where: { id: session.user.parentId },
+      select: { name: true, email: true },
+    });
+    if (parentUser) {
+      parentInfo = { name: parentUser.name, email: parentUser.email };
+    }
+  }
 
   return {
     user: {
@@ -88,10 +104,12 @@ export async function getUserSession(
       name: session.user.name,
       email: session.user.email,
       status: session.user.status as AccountStatus,
+      parentId: session.user.parentId,
+      parent: parentInfo,
       activePlan: activeSub
         ? {
-            name: activeSub.plan.name,
-            slug: activeSub.plan.slug,
+            name: activeSub.product.name,
+            slug: activeSub.product.slug,
             endDate: activeSub.endDate,
           }
         : null,

@@ -28,11 +28,16 @@ model User {
   name                String
   passwordHash        String
   status              String         @default("active") // active | disabled
+  parentId            String?        @db.ObjectId
+  ancestors           String[]       @db.ObjectId // materialized path: root -> ... -> direct parent
   failedLoginAttempts Int            @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
+  parent              User?          @relation("UserHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children            User[]         @relation("UserHierarchy")
   sessions            UserSession[]
-  subscriptions       Subscription[]
+  purchases           Purchase[]
+  memberships         Membership[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 }
@@ -73,34 +78,65 @@ model ActivityLog {
   createdAt  DateTime @default(now())
 }
 
-model Plan {
-  id            String         @id @default(auto()) @map("_id") @db.ObjectId
-  name          String
-  slug          String         @unique
-  description   String?
-  price         Float          @default(0)
-  currency      String         @default("USD")
-  interval      String         @default("month") // month | year
-  features      String[]
-  isActive      Boolean        @default(true)
-  sortOrder     Int            @default(0)
-  subscriptions Subscription[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+model Product {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  slug         String     @unique
+  description  String?
+  type         String     @default("physical") // physical | digital | membership
+  price        Float      @default(0)
+  currency     String     @default("USD")
+  paymentModel String     @default("one-time") // one-time | recurring
+  interval     String?    // month | year (for recurring products)
+  maxSubUsers  Int        @default(0) // 0 = none, -1 = unlimited
+  fileUrl      String? // For digital download products
+  accessKeys   String[] // Feature keys unlocked by purchase
+  isActive     Boolean    @default(true)
+  sortOrder    Int        @default(0)
+  metadata     Json?
+  purchases    Purchase[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
-model Subscription {
+model Purchase {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   userId      String    @db.ObjectId
-  planId      String    @db.ObjectId
-  status      String    @default("active") // active | cancelled | expired | past_due
-  externalId  String? // External payment provider ID (e.g. Stripe)
+  productId   String    @db.ObjectId
+  status      String    @default("completed") // pending | completed | refunded | failed | active | cancelled | expired
+  amount      Float
+  currency    String    @default("USD")
+  externalId  String? // Payment provider reference
   startDate   DateTime  @default(now())
   endDate     DateTime?
   cancelledAt DateTime?
   metadata    Json?
   user        User      @relation(fields: [userId], references: [id])
-  plan        Plan      @relation(fields: [planId], references: [id])
+  product     Product   @relation(fields: [productId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Membership {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  type        String // "purchase"
+  sourceId    String    @db.ObjectId // purchaseId
+  featureKeys String[] // Features granted by this membership
+  status      String    @default("active") // active | expired | revoked
+  expiresAt   DateTime?
+  user        User      @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Feature {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  key         String  @unique
+  description String
+  category    String
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
