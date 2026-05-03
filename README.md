@@ -14,10 +14,10 @@ mono-next/
 │   ├── types/            # Shared TypeScript types
 │   ├── pages/api/        # API route handlers
 │   └── prisma/           # Schema and seed scripts
-├── app-client/           # Admin panel (App Router, port 7000)
-│   ├── app/              # Pages (admin + public route groups)
+├── app-client/           # Frontend (App Router, port 7000)
+│   ├── app/              # Pages (admin, user, public route groups)
 │   ├── components/       # UI, layout, admin components
-│   ├── services/         # API client, auth, resource services
+│   ├── services/         # API client, auth, user auth, resource services
 │   ├── hooks/            # Custom React hooks
 │   └── types/            # Shared TypeScript types
 ├── docs/                 # Architecture documentation
@@ -28,13 +28,15 @@ mono-next/
 
 ### app-api
 
-Backend API server with cookie-based admin authentication, admin CRUD,
-and a layered architecture (controller, service, repository).
+Backend API server with dual authentication (admin sessions and user sessions),
+admin CRUD, user CRUD with subscription plans, and a layered architecture
+(controller, service, repository).
 
 ### app-client
 
-Admin panel with login, dashboard, and admin account management.
-Auth-guarded routes redirect to login when unauthenticated.
+Frontend application with an admin panel and a user dashboard.
+Admin-guarded routes redirect to `/login`. User-guarded routes redirect to
+`/user-login`. Supports user registration and subscription plan display.
 
 ## Getting Started
 

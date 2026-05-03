@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { authService, type AuthUser } from "@/services/auth-service";
+import { userAuthService, type AppUser } from "@/services/user-auth-service";
 
 type NavItem = {
   label: string;
@@ -11,31 +11,40 @@ type NavItem = {
 };
 
 const navigation: NavItem[] = [
-  { label: "Dashboard", href: "/" },
-  { label: "Users", href: "/users" },
-  { label: "Admins", href: "/admins" },
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Account", href: "/account" },
 ];
 
-export function AdminShell({
+export function UserShell({
   children,
-  admin,
+  user,
 }: {
   children: ReactNode;
-  admin: AuthUser;
+  user: AppUser;
 }) {
   const pathname = usePathname();
   const router = useRouter();
 
   async function handleLogout() {
-    await authService.logout();
-    router.replace("/login");
+    await userAuthService.logout();
+    router.replace("/user-login");
   }
+
+  const planLabel: Record<string, string> = {
+    free: "Free",
+    starter: "Starter",
+    pro: "Pro",
+    enterprise: "Enterprise",
+  };
 
   return (
     <div className="flex min-h-full">
       <aside className="hidden w-60 shrink-0 border-r border-gray-200 bg-gray-50 lg:flex lg:flex-col">
         <div className="px-4 py-6">
           <h1 className="text-lg font-bold text-gray-900 px-3">mono-next</h1>
+          <span className="mt-1 inline-block rounded-full bg-blue-100 px-3 py-0.5 text-xs font-medium text-blue-700">
+            {planLabel[user.plan] ?? user.plan}
+          </span>
         </div>
         <nav className="flex-1 px-4">
           <ul className="grid gap-1">
@@ -60,9 +69,9 @@ export function AdminShell({
         </nav>
         <div className="border-t border-gray-200 px-4 py-4">
           <p className="truncate px-3 text-sm font-medium text-gray-700">
-            {admin.name}
+            {user.name}
           </p>
-          <p className="truncate px-3 text-xs text-gray-400">{admin.email}</p>
+          <p className="truncate px-3 text-xs text-gray-400">{user.email}</p>
           <button
             onClick={handleLogout}
             className="mt-2 w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100"

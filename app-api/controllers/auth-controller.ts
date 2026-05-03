@@ -11,7 +11,10 @@ export async function loginController(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
   if (req.method !== "POST") {
     sendError(res, "Method not allowed.", 405);
     return;
@@ -32,7 +35,10 @@ export async function logoutController(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
   if (req.method !== "POST") {
     sendError(res, "Method not allowed.", 405);
     return;
@@ -43,7 +49,10 @@ export async function logoutController(
 }
 
 export async function meController(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
   if (req.method !== "GET") {
     sendError(res, "Method not allowed.", 405);
     return;

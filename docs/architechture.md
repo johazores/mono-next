@@ -38,8 +38,9 @@ app-api/
 ├── services/          <- Business logic, validation, data transformation
 ├── repositories/      <- Pure data access (Prisma queries only)
 ├── types/             <- Shared type definitions (barrel-exported via index.ts)
-│   ├── auth.ts        <- Role, AuthUser, AuthSession
+│   ├── auth.ts        <- Role, AccountStatus, AuthUser, AuthSession (admin auth)
 │   ├── admin.ts       <- AdminRecord, CreateAdminInput, UpdateAdminInput
+│   ├── user.ts        <- UserRecord, UserAuthSession, SubscriptionPlan, AccountStatus
 │   └── response.ts    <- ApiResponse<T>, ListResponse<T>
 ├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials)
 └── prisma/            <- Schema + seed scripts
@@ -59,8 +60,9 @@ app-api/
 - **Uniform response envelope**: All responses use `{ ok: true, data }` or `{ ok: false, error }`
 - **Singleton pattern**: Repository/service objects exported as plain object literals (not classes)
 - **Password security**: PBKDF2 with 120k iterations, SHA-512, 64-byte key, timing-safe comparison
-- **Auth guard**: `requireAdmin()` validates the session cookie and enforces role-based access
-- **Cookie-based sessions**: HMAC-SHA256 hashed tokens stored in `AdminSession` collection
+- **Auth guard**: `requireAdmin()` for admin routes, `requireUser()` for user routes
+- **Dual cookie-based sessions**: Separate `admin_session` (7d) and `user_session` (30d) cookies
+- **Subscription model**: Users have plan (free/starter/pro/enterprise), subscriptionId, subscriptionEnds
 - **Prisma singleton**: `globalThis` caching prevents connection leaks during hot reload
 
 ### Database
@@ -69,8 +71,9 @@ app-api/
 - **IDs**: Auto-generated ObjectId mapped to `_id`
 - **Collections**:
   - `Admin` — CMS admin accounts (name, email, passwordHash, role, status)
-  - `AdminSession` — Auth sessions (adminId, tokenHash, expiresAt)
-  - `User` — Application users (reserved for future app-level features)
+  - `AdminSession` — Admin auth sessions (adminId, tokenHash, expiresAt)
+  - `User` — Application users (name, email, passwordHash, plan, subscription)
+  - `UserSession` — User auth sessions (userId, tokenHash, expiresAt)
 - **Schema location**: `app-api/prisma/schema.prisma`
 
 ---
@@ -104,7 +107,8 @@ app-client/
 
 - **Tailwind-only styling**: No custom CSS. All styling via Tailwind utility classes co-located in JSX
 - **UI primitives**: Reusable `Button`, `Modal`, `Notice`, `StatusBadge` components in `components/ui/`
-- **Admin layout shell**: `AdminShell` provides sidebar navigation wrapping all pages
+- **Admin layout shell**: `AdminShell` provides sidebar navigation wrapping admin pages
+- **User layout shell**: `UserShell` provides sidebar navigation with plan badge wrapping user pages
 - **Decomposed CRUD**: `ResourceManager` orchestrates `ResourceEditor` (modal form) and `ResourceList` (item cards)
 - **Generic CRUD client**: `resourceService.list/create/update/remove/save` works for any endpoint
 - **Auto-refresh hook**: `useAdminResource<T>` polls every 15s for fresh data
@@ -139,11 +143,11 @@ fetch(`${NEXT_PUBLIC_API_URL}/api/admins`, { credentials: "include" })
 
 ### API-specific
 
-| Command            | Description                |
-| ------------------ | -------------------------- |
-| `pnpm prisma:push` | Push schema to MongoDB     |
-| `pnpm db:seed`     | Seed default admin user    |
-| `pnpm setup`       | Full install + push + seed |
+| Command            | Description                      |
+| ------------------ | -------------------------------- |
+| `pnpm prisma:push` | Push schema to MongoDB           |
+| `pnpm db:seed`     | Seed default admin and demo user |
+| `pnpm setup`       | Full install + push + seed       |
 
 ---
 

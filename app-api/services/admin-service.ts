@@ -1,9 +1,15 @@
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { adminRepository } from "@/repositories/admin-repository";
-import type { AdminRecord, CreateAdminInput, UpdateAdminInput } from "@/types";
+import type {
+  AdminRecord,
+  CreateAdminInput,
+  UpdateAdminInput,
+  Role,
+  AccountStatus,
+} from "@/types";
 
-const allowedRoles = ["admin", "editor"];
-const allowedStatuses = ["active", "disabled"];
+const allowedRoles: Role[] = ["admin", "editor"];
+const allowedStatuses: AccountStatus[] = ["active", "disabled"];
 
 function cleanEmail(email: string) {
   return String(email || "")
@@ -12,11 +18,11 @@ function cleanEmail(email: string) {
 }
 
 function safeAdmin(
-  admin: (AdminRecord & { passwordHash?: string }) | null,
+  admin: (Record<string, unknown> & { passwordHash?: string }) | null,
 ): AdminRecord | null {
   if (!admin) return null;
   const { passwordHash, ...safe } = admin;
-  return safe;
+  return safe as AdminRecord;
 }
 
 export const adminService = {
@@ -49,7 +55,7 @@ export const adminService = {
       throw new Error("Name, email, and password are required.");
     }
 
-    if (!allowedRoles.includes(input.role)) {
+    if (!(allowedRoles as string[]).includes(input.role)) {
       throw new Error("Invalid role.");
     }
 
@@ -58,7 +64,7 @@ export const adminService = {
       email,
       passwordHash: hashPassword(input.password),
       role: input.role,
-      status: allowedStatuses.includes(input.status ?? "")
+      status: (allowedStatuses as string[]).includes(input.status ?? "")
         ? input.status!
         : "active",
     });
@@ -75,8 +81,9 @@ export const adminService = {
     const nextRole = input.role || current.role;
     const nextStatus = input.status || current.status;
 
-    if (!allowedRoles.includes(nextRole)) throw new Error("Invalid role.");
-    if (!allowedStatuses.includes(nextStatus))
+    if (!(allowedRoles as string[]).includes(nextRole))
+      throw new Error("Invalid role.");
+    if (!(allowedStatuses as string[]).includes(nextStatus))
       throw new Error("Invalid status.");
 
     if (

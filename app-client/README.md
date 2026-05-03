@@ -1,6 +1,7 @@
 # app-client
 
-Admin panel frontend built with Next.js (App Router) + Tailwind CSS.
+Frontend application built with Next.js (App Router) + Tailwind CSS.
+Includes an admin panel and a user-facing dashboard.
 
 ## Setup
 
@@ -23,27 +24,43 @@ NEXT_PUBLIC_API_URL=http://localhost:7001
 
 ```
 app/
-  (admin)/         Protected admin pages (dashboard, admins)
-  (public)/        Public pages (login)
+  (admin)/         Protected admin pages (dashboard, users, admins)
+  (user)/          Protected user pages (dashboard, account)
+  (public)/        Public pages (login, user-login, user-register)
 components/
   admin/           ResourceManager, ResourceEditor, ResourceList, FieldRenderer
-  layout/          AdminShell (sidebar navigation, auth info, logout)
+  layout/          AdminShell, UserShell (sidebar navigation, auth info, logout)
   ui/              Button, Modal, Notice, StatusBadge
 hooks/             useAdminResource (polling data hook)
-services/          API client, auth service, resource service
+services/          API client, auth service, user auth service, resource service
 types/             ApiResult, ResourceField, ResourceItem
 ```
 
 ## Authentication
 
-The admin layout (`(admin)/layout.tsx`) checks authentication on mount by
-calling `/api/auth/me`. Unauthenticated visitors are redirected to `/login`.
+Two separate auth guards protect different route groups:
+
+- **Admin** (`(admin)/layout.tsx`): Checks `/api/auth/me`. Redirects to `/login`.
+- **User** (`(user)/layout.tsx`): Checks `/api/users/auth/me`. Redirects to `/user-login`.
+
 All API requests include `credentials: "include"` for cookie passthrough.
 
 ## Pages
 
+### Admin Panel
+
 | Path      | Description                          |
 | --------- | ------------------------------------ |
-| `/`       | Dashboard (protected)                |
+| `/`       | Admin dashboard (protected)          |
+| `/users`  | User management (protected)          |
 | `/admins` | Admin account management (protected) |
-| `/login`  | Login form (public)                  |
+| `/login`  | Admin login form (public)            |
+
+### User Dashboard
+
+| Path             | Description                        |
+| ---------------- | ---------------------------------- |
+| `/dashboard`     | User dashboard (protected)         |
+| `/account`       | User account and subscription info |
+| `/user-login`    | User login form (public)           |
+| `/user-register` | User registration form (public)    |

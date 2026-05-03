@@ -10,6 +10,16 @@ export function getSessionSecret() {
   return secret;
 }
 
+export function getUserSessionSecret() {
+  const secret = process.env.USER_SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "USER_SESSION_SECRET must be set and at least 32 characters.",
+    );
+  }
+  return secret;
+}
+
 function getKey() {
   return crypto.createHash("sha256").update(getSessionSecret()).digest();
 }

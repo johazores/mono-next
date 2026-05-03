@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "@/lib/admin-auth";
 import { sendError, sendOk } from "@/lib/api-response";
-import { adminService } from "@/services/admin-service";
+import { userService } from "@/services/user-service";
 
-export async function adminCollectionController(
+export async function userCollectionController(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
@@ -16,10 +16,10 @@ export async function adminCollectionController(
 
   try {
     if (req.method === "GET")
-      return sendOk(res, { items: await adminService.list() });
+      return sendOk(res, { items: await userService.list() });
     if (req.method === "POST") {
-      const admin = await adminService.create(req.body);
-      return sendOk(res, admin, 201);
+      const user = await userService.register(req.body);
+      return sendOk(res, user, 201);
     }
 
     res.setHeader("Allow", ["GET", "POST"]);
@@ -30,7 +30,7 @@ export async function adminCollectionController(
   }
 }
 
-export async function adminItemController(
+export async function userItemController(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
@@ -45,19 +45,19 @@ export async function adminItemController(
 
   try {
     if (req.method === "GET") {
-      const item = await adminService.getById(id);
-      if (!item) return sendError(res, "Admin not found.", 404);
+      const item = await userService.getById(id);
+      if (!item) return sendError(res, "User not found.", 404);
       return sendOk(res, item);
     }
 
     if (req.method === "PUT") {
-      const admin = await adminService.update(id, req.body);
-      return sendOk(res, admin);
+      const user = await userService.update(id, req.body);
+      return sendOk(res, user);
     }
 
     if (req.method === "DELETE") {
-      const admin = await adminService.delete(id);
-      return sendOk(res, admin);
+      const user = await userService.delete(id);
+      return sendOk(res, user);
     }
 
     res.setHeader("Allow", ["GET", "PUT", "DELETE"]);
