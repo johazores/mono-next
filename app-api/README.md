@@ -37,16 +37,6 @@ client extension — no manual filtering is required in repositories or services
 - **SiteSettings**: Per-environment (dev can use credentials auth while production uses Clerk)
 - **Seed script**: Respects `APP_ENV` — run `APP_ENV=production pnpm db:seed` to seed production data independently
 
-### First-time setup with existing data
-
-If you already have data in MongoDB from before environment scoping was added,
-run the backfill migration **before** pushing the new schema:
-
-```bash
-npx tsx prisma/migrate-env.ts   # backfills env="dev" on all existing documents
-pnpm prisma:push                # creates compound unique indexes
-```
-
 ## Structure
 
 ```
