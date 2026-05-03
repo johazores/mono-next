@@ -21,10 +21,10 @@ export default function HomePage() {
             Admin Panel
           </Link>
           <Link
-            href="/dashboard"
+            href="/my-account"
             className="block rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-gray-800"
           >
-            User Dashboard
+            My Account
           </Link>
         </div>
 

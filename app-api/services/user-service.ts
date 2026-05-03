@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { hashPassword, verifyPassword, DUMMY_HASH } from "@/lib/password";
 import { userRepository } from "@/repositories/user-repository";
 import { purchaseRepository } from "@/repositories/purchase-repository";
@@ -6,6 +7,7 @@ import type {
   UserRecord,
   CreateUserInput,
   CreateSubUserInput,
+  CreateSubUserResult,
   UpdateUserInput,
   UpdateUserProfileInput,
   AccountStatus,
@@ -31,7 +33,13 @@ async function enrichWithPlan(
   user: UserRecord | null,
 ): Promise<UserRecord | null> {
   if (!user) return null;
-  const sub = await purchaseRepository.findActiveSubscription(user.id);
+  let sub = await purchaseRepository.findActiveSubscription(user.id);
+
+  // Sub-users inherit their parent's plan when they have no own subscription
+  if (!sub && user.parentId) {
+    sub = await purchaseRepository.findActiveSubscription(user.parentId);
+  }
+
   if (sub) {
     user.activePlan = {
       id: sub.product.id,
@@ -204,7 +212,7 @@ export const userService = {
   async createSubUser(
     parentId: string,
     input: CreateSubUserInput,
-  ): Promise<UserRecord | null> {
+  ): Promise<CreateSubUserResult> {
     const parent = await userRepository.findById(parentId);
     if (!parent) throw new Error("Parent user not found.");
 
@@ -218,6 +226,8 @@ export const userService = {
       throw new Error("No active subscription. Cannot create sub-users.");
 
     if (parentRecord.parentId) {
+      // Sub-users can only create their own sub-users if they hold
+      // their own purchased subscription that explicitly allows it.
       const ownProduct = creatorSub.product as Record<string, unknown>;
       const ownMax = (ownProduct.maxSubUsers as number) ?? 0;
       const ownKeys = (ownProduct.accessKeys as string[]) ?? [];
@@ -247,46 +257,50 @@ export const userService = {
     // maxSubUsers === -1 means unlimited
 
     const email = cleanEmail(input.email);
-    if (!input.name || !email || !input.password) {
-      throw new Error("Name, email, and password are required.");
+    if (!email) {
+      throw new Error("Email is required.");
     }
 
-    const ancestors = [parentId];
+    const ancestors = [...(parentRecord.ancestors || []), parentId];
+
+    // Check if a user with this email already exists
+    const existing = await userRepository.findByEmailWithPassword(email);
+
+    if (existing) {
+      // Link existing user — must not already be a sub-user
+      if (existing.parentId) {
+        throw new Error("This user is already a sub-user of another account.");
+      }
+
+      const updated = await userRepository.update(existing.id, {
+        parent: { connect: { id: parentId } },
+        ancestors,
+      });
+
+      const safe = safeUser(updated)!;
+      const enriched = await enrichWithPlan(safe);
+      return { user: enriched!, linked: true, generatedPassword: null };
+    }
+
+    // Create new user with auto-generated password
+    // Append Aa1 to guarantee the password passes strength validation
+    const generatedPassword =
+      crypto.randomBytes(12).toString("base64url") + "Aa1";
+    const derivedName = email.split("@")[0];
 
     const user = await userRepository.create({
-      name: input.name,
+      name: derivedName,
       email,
-      passwordHash: hashPassword(input.password),
+      passwordHash: hashPassword(generatedPassword),
       parent: { connect: { id: parentId } },
       ancestors,
     });
 
     const safe = safeUser(user);
-    if (!safe) return null;
+    if (!safe) throw new Error("Failed to create sub-user.");
 
-    // Sub-users inherit creator's subscription — assign same product
-    const subPurchase = await purchaseRepository.create({
-      user: { connect: { id: safe.id } },
-      product: { connect: { id: creatorSub.productId } },
-      amount: 0,
-      currency: creatorSub.currency,
-      status: "active",
-    });
-
-    // Grant membership from product features
-    const accessKeys = (product as Record<string, unknown>)
-      .accessKeys as string[];
-    if (accessKeys?.length > 0) {
-      const { membershipService } =
-        await import("@/services/membership-service");
-      await membershipService.grantFromPurchase(
-        safe.id,
-        subPurchase.id,
-        accessKeys,
-      );
-    }
-
-    return enrichWithPlan(safe);
+    const enriched = await enrichWithPlan(safe);
+    return { user: enriched!, linked: false, generatedPassword };
   },
 
   async listSubUsers(parentId: string): Promise<UserRecord[]> {
@@ -317,24 +331,9 @@ export const userService = {
       );
     }
 
-    // Revoke the inherited purchase (amount=0) and its membership so the
-    // sub-user no longer retains benefits from the parent's subscription.
-    const purchases = await purchaseRepository.findByUserId(subUserId);
-    const inherited = purchases.find(
-      (p) => p.amount === 0 && p.status === "active",
-    );
-    if (inherited) {
-      await purchaseRepository.update(inherited.id, {
-        status: "cancelled",
-        cancelledAt: new Date(),
-      });
-      const { membershipService } =
-        await import("@/services/membership-service");
-      await membershipService.revokeBySource(inherited.id);
-    }
-
     // Detach from parent — the user keeps their account and any independent
-    // purchases/memberships but loses inherited features from the parent.
+    // purchases but loses inherited features from the parent since plan/features
+    // are resolved dynamically from the parent's subscription.
     const updated = await userRepository.update(subUserId, {
       parent: { disconnect: true },
       ancestors: { set: [] },

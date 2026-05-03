@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserShell } from "@/components/layout/user-shell";
 import { userAuthService } from "@/services/user-auth-service";
+import { useAuthConfig } from "@/components/auth/auth-config-provider";
 import type { AppUser } from "@/types";
 
 export default function UserLayout({
@@ -12,10 +13,13 @@ export default function UserLayout({
   children: React.ReactNode;
 }>) {
   const router = useRouter();
+  const { ready } = useAuthConfig();
   const [user, setUser] = useState<AppUser | null>(null);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    if (!ready) return;
+
     userAuthService
       .me()
       .then((res) => {
@@ -27,7 +31,7 @@ export default function UserLayout({
       })
       .catch(() => router.replace("/user-login"))
       .finally(() => setChecked(true));
-  }, [router]);
+  }, [router, ready]);
 
   if (!checked) {
     return (

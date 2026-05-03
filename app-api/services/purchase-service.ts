@@ -2,6 +2,19 @@ import { purchaseRepository } from "@/repositories/purchase-repository";
 import { productRepository } from "@/repositories/product-repository";
 import type { PurchaseRecord } from "@/types";
 
+function computeEndDate(interval: string | null, from?: Date): Date | null {
+  if (!interval) return null;
+  const start = from ?? new Date();
+  const end = new Date(start);
+  if (interval === "year") {
+    end.setFullYear(end.getFullYear() + 1);
+  } else {
+    // default to month
+    end.setMonth(end.getMonth() + 1);
+  }
+  return end;
+}
+
 export const purchaseService = {
   async create(
     userId: string,
@@ -35,7 +48,9 @@ export const purchaseService = {
       externalId: options?.externalId || null,
       endDate: options?.metadata?.endDate
         ? new Date(options.metadata.endDate as string)
-        : null,
+        : isSubscription
+          ? computeEndDate(product.interval)
+          : null,
       metadata: (options?.metadata ?? null) as never,
     });
 
@@ -82,7 +97,9 @@ export const purchaseService = {
       currency: product.currency,
       status: "active",
       externalId: options?.externalId || null,
-      endDate: options?.endDate ? new Date(options.endDate) : null,
+      endDate: options?.endDate
+        ? new Date(options.endDate)
+        : computeEndDate(product.interval),
     });
 
     // Grant membership from product features

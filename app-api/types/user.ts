@@ -3,6 +3,7 @@ import type { AccountStatus } from "./auth";
 export type UserRecord = {
   id: string;
   email: string;
+  clerkId: string | null;
   name: string;
   status: AccountStatus;
   parentId: string | null;
@@ -20,9 +21,13 @@ export type UserRecord = {
 };
 
 export type CreateSubUserInput = {
-  name: string;
   email: string;
-  password: string;
+};
+
+export type CreateSubUserResult = {
+  user: UserRecord;
+  linked: boolean;
+  generatedPassword: string | null;
 };
 
 export type CreateUserInput = {

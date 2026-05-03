@@ -6,10 +6,26 @@ import {
   getUserSession,
 } from "@/lib/user-auth";
 import { userService } from "@/services/user-service";
+import { settingService } from "@/services/setting-service";
 import { checkRateLimit, USER_LOGIN_LIMIT } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
 import { verifyCsrf } from "@/lib/csrf";
 import { getClientIp } from "@/lib/request-utils";
+
+async function requireCredentialProvider(
+  res: NextApiResponse,
+): Promise<boolean> {
+  const config = await settingService.getAuthConfig();
+  if (config.provider !== "credentials") {
+    sendError(
+      res,
+      "Password authentication is disabled. Use your SSO provider.",
+      400,
+    );
+    return false;
+  }
+  return true;
+}
 
 export async function userLoginController(
   req: NextApiRequest,
@@ -25,6 +41,8 @@ export async function userLoginController(
   }
 
   if (!verifyCsrf(req, res)) return;
+
+  if (!(await requireCredentialProvider(res))) return;
 
   const ip = getClientIp(req);
   const limit = checkRateLimit(ip, "user.login", USER_LOGIN_LIMIT);
@@ -83,6 +101,8 @@ export async function userRegisterController(
   }
 
   if (!verifyCsrf(req, res)) return;
+
+  if (!(await requireCredentialProvider(res))) return;
 
   try {
     const user = await userService.register(req.body);

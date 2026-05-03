@@ -91,6 +91,14 @@ pnpm setup:api      # install + push + seed in one command
 | API Access Pass    | $199.99   | Digital (one-time)     | -             |
 | Premium Membership | $19.99/mo | Membership (recurring) | -             |
 
+### Seeded Site Settings
+
+| Key                        | Default Value | Description             |
+| -------------------------- | ------------- | ----------------------- |
+| `auth.provider`            | `credentials` | Authentication provider |
+| `auth.clerkPublishableKey` | (empty)       | Clerk frontend key      |
+| `auth.clerkSecretKey`      | (empty)       | Clerk backend key       |
+
 ---
 
 ## 4. Run Unit Tests
@@ -99,7 +107,7 @@ Tests use **Vitest** and mock all repositories — no database connection needed
 
 ```bash
 # From the repo root
-pnpm test            # single run (138 tests)
+pnpm test            # single run (151 tests)
 pnpm test:watch      # watch mode for development
 ```
 
@@ -118,13 +126,14 @@ pnpm test
 | `tests/lib/rate-limiter.test.ts`              | 6     | Sliding window rate limiter (allow/block/remaining)    |
 | `tests/lib/feature-registry.test.ts`          | 12    | Feature cache, definitions, enabled checks             |
 | `tests/services/admin-service.test.ts`        | 22    | Admin CRUD, login, validation, duplicate detection     |
-| `tests/services/user-service.test.ts`         | 36    | User CRUD, registration, sub-user, profile updates     |
+| `tests/services/user-service.test.ts`         | 37    | User CRUD, registration, sub-user, profile updates     |
 | `tests/services/activity-log-service.test.ts` | 4     | Activity log creation, listing, error handling         |
 | `tests/services/product-service.test.ts`      | 18    | Product CRUD, slug uniqueness, access key validation   |
 | `tests/services/purchase-service.test.ts`     | 10    | Purchase creation, ownership checks, subscriptions     |
 | `tests/services/membership-service.test.ts`   | 6     | Grant, revoke, list memberships                        |
 | `tests/services/feature-service.test.ts`      | 11    | Feature access checks, enabled features, definitions   |
 | `tests/services/report-service.test.ts`       | 5     | Admin dashboard aggregation, user reports              |
+| `tests/services/setting-service.test.ts`      | 12    | Setting get/set, auth config defaults, public config   |
 
 ### Detailed Test Breakdown
 
@@ -136,7 +145,7 @@ pnpm test
 - `delete` — prevents deleting last admin, allows delete when others exist, throws on non-existent admin
 - `updateProfile` — updates name, rejects short names, requires current password for password change, rejects incorrect current password, changes password, throws when no fields
 
-**User Service (36 tests):**
+**User Service (37 tests):**
 
 - `authenticate` — successful login, empty credentials, wrong password, non-existent email (timing-safe), disabled account
 - `register` — validates required fields, creates user and assigns free product
@@ -144,7 +153,7 @@ pnpm test
 - `delete` — throws on non-existent user, deletes and strips password hash
 - `updateProfile` — updates name, checks email uniqueness, allows same email, requires current password, rejects incorrect password, throws when no fields, rejects short names
 - `createSubUser` — creates sub-user when product allows, validates limits, checks parent subscription, blocks unpromoted sub-users, allows promoted sub-users with own qualifying subscription
-- `revokeSubUser` — cancels inherited purchase, revokes inherited membership, detaches sub-user from parent, validates ownership, prevents orphaning children
+- `revokeSubUser` — detaches sub-user from parent, validates ownership, prevents orphaning children
 - `enrichWithPlan` — returns active plan info from recurring purchase
 
 **Password Lib (8 tests):**
@@ -171,11 +180,12 @@ pnpm test
  ✓ tests/services/membership-service.test.ts (6 tests)
  ✓ tests/services/feature-service.test.ts (11 tests)
  ✓ tests/services/report-service.test.ts (5 tests)
- ✓ tests/services/user-service.test.ts (36 tests)
+ ✓ tests/services/setting-service.test.ts (12 tests)
+ ✓ tests/services/user-service.test.ts (37 tests)
  ✓ tests/services/admin-service.test.ts (22 tests)
 
- Test Files  11 passed (11)
-      Tests  138 passed (138)
+ Test Files  12 passed (12)
+      Tests  151 passed (151)
 ```
 
 > Tests also run automatically before every build via the `prebuild` hook. If any test fails, the build is blocked.
@@ -200,13 +210,13 @@ pnpm dev
 
 1. Go to http://localhost:7000/login
 2. Sign in with `admin@admin.com` / `ChangeMe123!`
-3. Access dashboard, users, products, features, reports, activity logs
+3. Access dashboard, users, products, features, reports, activity logs, settings
 
 ### User Portal
 
 1. Go to http://localhost:7000/user-login
 2. Sign in with `user@demo.com` / `ChangeMe123!`
-3. Access dashboard, account, features, sub-users, purchases
+3. Access my account, account settings, features, sub-users, purchases
 
 ---
 
@@ -245,6 +255,9 @@ curl http://localhost:7001/api/products \
 | GET         | `/api/users/auth/reports`        | User  | User activity report      |
 | GET         | `/api/admins/reports?period=30d` | Admin | Admin dashboard report    |
 | POST/DELETE | `/api/admins/memberships`        | Admin | Grant/revoke memberships  |
+| GET         | `/api/settings/auth`             | None  | Public auth config        |
+| GET         | `/api/panel/settings`            | Admin | List all settings         |
+| PUT         | `/api/panel/settings/:key`       | Admin | Update a setting          |
 
 > **CSRF**: All state-changing requests (POST/PUT/DELETE) require a valid `Origin` or `Referer` header matching the allowed origin.
 
@@ -388,6 +401,14 @@ This lets admins manually give or remove specific features for any user, regardl
 2. Change your name or password
 3. Password must be 8+ characters with uppercase, lowercase, and a digit
 
+#### Settings
+
+1. Click **Settings** in the sidebar
+2. Select the **Authentication Provider**: Credentials (default) or Clerk
+3. When Clerk is selected, enter your Clerk Publishable Key and Secret Key
+4. Click **Save Settings** — changes take effect immediately for user-facing auth
+5. Admin authentication always uses password-based login regardless of this setting
+
 ---
 
 ### 9.2 User Portal
@@ -431,17 +452,17 @@ If your subscription includes the `sub-users.create` feature:
 
 1. Click **Sub-Users** in the sidebar
 2. You see a table of your current sub-users (name, email, status)
-3. Click **Create Sub-User** to open the creation form — fill in name, email, and password
+3. Click **Create Sub-User** to open the creation form — enter the sub-user's email address. A password is auto-generated and shown once after creation.
 4. Use the **Revoke** button on any row to revoke a sub-user
 
-Revoking a sub-user cancels their inherited purchase and membership from your subscription, then detaches them from the parent account (clears `parentId`/`ancestors`). The account remains active and independent, keeping any purchases they made on their own. Sub-users inherit your subscription's features. The limit depends on your product (Starter: 3, Pro: 10, Enterprise: unlimited). Free tier cannot create sub-users.
+Revoking a sub-user detaches them from the parent account (clears `parentId`/`ancestors`). The account remains active and independent, keeping any purchases they made on their own. Sub-users dynamically inherit your subscription's features at runtime — no separate purchase or membership is created. The limit depends on your product (Starter: 3, Pro: 10, Enterprise: unlimited). Free tier cannot create sub-users.
 
 If a sub-user independently purchases a subscription that includes `sub-users.create` and allows sub-users, they gain the ability to create their own sub-users.
 
 **API alternative:**
 
 - `GET /api/users/auth/sub-users` — list
-- `POST /api/users/auth/sub-users` — create (body: `{ "name": "...", "email": "...", "password": "..." }`)
+- `POST /api/users/auth/sub-users` — create (body: `{ "email": "..." }`)
 - `DELETE /api/users/auth/sub-users/{id}` — revoke
 
 #### Purchases
@@ -493,7 +514,7 @@ If a sub-user independently purchases a subscription that includes `sub-users.cr
 
 1. Login as `user@demo.com` (Starter subscription, 3 sub-user limit) at http://localhost:7000/user-login
 2. Click **Sub-Users** in the sidebar
-3. Click **Create Sub-User** — fill in name, email (`sub1@test.com`), password (`SubPass123!`) and submit
+3. Click **Create Sub-User** — enter email (`sub1@test.com`) and submit
 4. Create 2 more sub-users — all should succeed, and the table shows all 3
 5. Try creating a 4th — should fail with a sub-user limit error message
 6. Revoke a sub-user using the **Revoke** button to verify revocation works
@@ -539,7 +560,7 @@ If a sub-user independently purchases a subscription that includes `sub-users.cr
 
 1. Open a terminal in the project root
 2. Run `pnpm test`
-3. All 136 tests should pass across 11 test files
+3. All 151 tests should pass across 12 test files
 4. If any test fails, check the output for the failing assertion and fix the issue before continuing
 
 ---
@@ -562,7 +583,7 @@ Users can also gain individual features by **purchasing products** or through an
 ```bash
 pnpm install          # Install everything
 pnpm setup:api        # Install + push schema + seed (first time)
-pnpm test             # Run 136 unit tests
+pnpm test             # Run 151 unit tests
 pnpm dev              # Start both apps (client:7000 + api:7001)
 pnpm build            # Production build (tests run first)
 ```

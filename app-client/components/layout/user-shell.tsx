@@ -7,7 +7,7 @@ import { userAuthService } from "@/services/user-auth-service";
 import type { AppUser, NavItem } from "@/types";
 
 const baseNavigation: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard" },
+  { label: "Dashboard", href: "/my-account" },
   { label: "Account", href: "/account" },
   { label: "Features", href: "/features" },
   { label: "Sub-Users", href: "/sub-users" },

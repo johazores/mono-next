@@ -39,15 +39,18 @@ tests/             Unit tests (Vitest) — mirrors source structure
 
 ## Database Collections
 
-| Collection     | Purpose                                                         |
-| -------------- | --------------------------------------------------------------- |
-| `Admin`        | CMS admin accounts (name, email, password, role, lockout state) |
-| `AdminSession` | Admin cookie-based auth sessions (hashed token, expiry)         |
-| `User`         | Application users (name, email, password, lockout state)        |
-| `UserSession`  | User cookie-based auth sessions (hashed token, expiry)          |
-| `Plan`         | Subscription plans (name, slug, price, interval, features)      |
-| `Subscription` | User subscription history (status, dates, plan relation)        |
-| `ActivityLog`  | Centralized audit trail (actor, action, resource, IP, UA)       |
+| Collection     | Purpose                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| `Admin`        | CMS admin accounts (name, email, password, role, status, lockout state)                           |
+| `AdminSession` | Admin cookie-based auth sessions (hashed token, expiry)                                           |
+| `User`         | Application users (name, email, password, status, parentId hierarchy, lockout state)              |
+| `UserSession`  | User cookie-based auth sessions (hashed token, expiry)                                            |
+| `Product`      | Purchasable items (name, slug, type, price, paymentModel, interval, accessKeys, maxSubUsers)      |
+| `Purchase`     | User purchases and subscriptions (userId, productId, status, amount, dates, externalId)           |
+| `Membership`   | Feature access grants from purchases (userId, sourceId, featureKeys, status)                      |
+| `Feature`      | Feature definitions and flags (key, description, category, isActive, sortOrder)                   |
+| `ActivityLog`  | Centralized audit trail (actor, action, resource, IP, UA)                                         |
+| `SiteSetting`  | Key-value configuration store (key, JSON value) for auth provider settings and system preferences |
 
 ## Available Endpoints
 
@@ -78,12 +81,12 @@ tests/             Unit tests (Vitest) — mirrors source structure
 
 ### User Auth
 
-| Method | Path                     | Description            |
-| ------ | ------------------------ | ---------------------- |
-| POST   | /api/users/auth/register | Register a new user    |
-| POST   | /api/users/auth/login    | Authenticate a user    |
-| POST   | /api/users/auth/logout   | Clear the user session |
-| GET    | /api/users/auth/me       | Get current user info  |
+| Method | Path                     | Description                                     |
+| ------ | ------------------------ | ----------------------------------------------- |
+| POST   | /api/users/auth/register | Register a new user (credentials provider only) |
+| POST   | /api/users/auth/login    | Authenticate a user (credentials provider only) |
+| POST   | /api/users/auth/logout   | Clear the user session                          |
+| GET    | /api/users/auth/me       | Get current user info (cookie or Bearer token)  |
 
 ### User Profile (requires user session)
 
@@ -102,22 +105,30 @@ tests/             Unit tests (Vitest) — mirrors source structure
 | PUT    | /api/users/:id | Update a user  |
 | DELETE | /api/users/:id | Delete a user  |
 
-### Plans
+### Products
 
-| Method | Path           | Auth  | Description              |
-| ------ | -------------- | ----- | ------------------------ |
-| GET    | /api/plans     | None  | List active plans        |
-| POST   | /api/plans     | Admin | Create a plan            |
-| GET    | /api/plans/:id | None  | Get a plan               |
-| PUT    | /api/plans/:id | Admin | Update a plan            |
-| DELETE | /api/plans/:id | Admin | Soft-delete (deactivate) |
+| Method | Path                 | Auth  | Description              |
+| ------ | -------------------- | ----- | ------------------------ |
+| GET    | /api/products        | Admin | List all products        |
+| POST   | /api/products        | Admin | Create a product         |
+| GET    | /api/products/:id    | Admin | Get a product            |
+| PUT    | /api/products/:id    | Admin | Update a product         |
+| DELETE | /api/products/:id    | Admin | Soft-delete (deactivate) |
+| GET    | /api/products/public | None  | Public product catalog   |
+
+### Purchases (requires user session)
+
+| Method | Path                      | Description               |
+| ------ | ------------------------- | ------------------------- |
+| GET    | /api/users/auth/purchases | List own purchase history |
+| POST   | /api/users/auth/purchases | Create a purchase         |
 
 ### Subscriptions (requires admin role)
 
 | Method | Path                         | Description                       |
 | ------ | ---------------------------- | --------------------------------- |
 | GET    | /api/users/:id/subscriptions | List user subscription history    |
-| POST   | /api/users/:id/subscriptions | Assign a plan to a user           |
+| POST   | /api/users/:id/subscriptions | Assign a product to a user        |
 | DELETE | /api/users/:id/subscriptions | Cancel user's active subscription |
 
 ### Own Subscription (requires user session)
@@ -125,6 +136,52 @@ tests/             Unit tests (Vitest) — mirrors source structure
 | Method | Path                         | Description                           |
 | ------ | ---------------------------- | ------------------------------------- |
 | GET    | /api/users/auth/subscription | Get own active subscription & history |
+
+### Features (requires admin role)
+
+| Method | Path                     | Description       |
+| ------ | ------------------------ | ----------------- |
+| GET    | /api/admins/features     | List all features |
+| POST   | /api/admins/features     | Create a feature  |
+| PUT    | /api/admins/features/:id | Update a feature  |
+| DELETE | /api/admins/features/:id | Delete a feature  |
+
+### User Features (requires user session)
+
+| Method | Path                     | Description          |
+| ------ | ------------------------ | -------------------- |
+| GET    | /api/users/auth/features | Get enabled features |
+
+### Memberships
+
+| Method | Path                        | Auth  | Description          |
+| ------ | --------------------------- | ----- | -------------------- |
+| POST   | /api/admins/memberships     | Admin | Grant a membership   |
+| DELETE | /api/admins/memberships     | Admin | Revoke a membership  |
+| GET    | /api/users/auth/memberships | User  | List own memberships |
+
+### Sub-Users (requires user session)
+
+| Method | Path                          | Description       |
+| ------ | ----------------------------- | ----------------- |
+| GET    | /api/users/auth/sub-users     | List sub-users    |
+| POST   | /api/users/auth/sub-users     | Create a sub-user |
+| DELETE | /api/users/auth/sub-users/:id | Revoke a sub-user |
+
+### Reports
+
+| Method | Path                    | Auth  | Description            |
+| ------ | ----------------------- | ----- | ---------------------- |
+| GET    | /api/admins/reports     | Admin | Admin dashboard report |
+| GET    | /api/users/auth/reports | User  | User activity report   |
+
+### Settings
+
+| Method | Path                     | Auth   | Description                                 |
+| ------ | ------------------------ | ------ | ------------------------------------------- |
+| GET    | /api/settings/auth       | Public | Returns public auth config (provider + key) |
+| GET    | /api/panel/settings      | Admin  | List all settings                           |
+| PUT    | /api/panel/settings/:key | Admin  | Update a setting                            |
 
 ### Activity Logs (requires admin role)
 
@@ -151,10 +208,17 @@ tests/
   lib/               Pure utility tests (no mocks)
     password.test.ts
     rate-limiter.test.ts
+    feature-registry.test.ts
   services/           Business logic tests (mocked repositories)
     admin-service.test.ts
     user-service.test.ts
     activity-log-service.test.ts
+    product-service.test.ts
+    purchase-service.test.ts
+    membership-service.test.ts
+    feature-service.test.ts
+    report-service.test.ts
+    setting-service.test.ts
 ```
 
 ### Guidelines
@@ -184,12 +248,19 @@ Uses HMAC-SHA256 hashed tokens stored in `AdminSession`. Sessions use
 `HttpOnly`, `SameSite=Lax` cookies with a 7-day expiry. Protected by
 `ADMIN_SESSION_SECRET` (minimum 32 characters). Middleware: `requireAdmin()`.
 
-### User Auth (`user_session` cookie)
+### User Auth (`user_session` cookie or Clerk JWT)
 
-Uses HMAC-SHA256 hashed tokens stored in `UserSession`. Sessions use
-`HttpOnly`, `SameSite=Lax` cookies with a 14-day expiry. Protected by
-`USER_SESSION_SECRET` (minimum 32 characters). Middleware: `requireUser()`.
-Users register with a `free` plan by default and can be upgraded via the
+Supports two providers, configurable via the `SiteSetting` collection:
+
+- **Credentials** (default): Cookie-based sessions using HMAC-SHA256 hashed tokens
+  stored in `UserSession`. Sessions use `HttpOnly`, `SameSite=Lax` cookies with a
+  14-day expiry. Protected by `USER_SESSION_SECRET` (minimum 32 characters).
+- **Clerk**: JWT-based stateless authentication via Bearer token in the
+  Authorization header. Tokens are verified using `@clerk/backend`. Users are
+  synced to the local `User` model by email on first authentication.
+
+Middleware: `requireUser()`. See [docs/dual-auth.md](../docs/dual-auth.md) for details.
+Users register with a `free` product by default and can be upgraded via the
 admin panel.
 
 ### CSRF Protection
@@ -239,6 +310,7 @@ fire-and-forget (never breaks the main request flow).
 | `admin.create`        | Admin account created via panel          |
 | `admin.update`        | Admin account updated via panel          |
 | `admin.delete`        | Admin account deleted via panel          |
+| `admin.locked`        | Admin account locked (too many attempts) |
 | `user.login`          | Successful user login                    |
 | `user.login_failed`   | Failed user login attempt                |
 | `user.register`       | New user registration                    |
@@ -246,14 +318,21 @@ fire-and-forget (never breaks the main request flow).
 | `user.create`         | User created by admin                    |
 | `user.update`         | User updated by admin                    |
 | `user.delete`         | User deleted by admin                    |
-| `profile.update`      | Profile self-update (admin or user)      |
-| `admin.locked`        | Admin account locked (too many attempts) |
 | `user.locked`         | User account locked (too many attempts)  |
-| `plan.create`         | Plan created                             |
-| `plan.update`         | Plan updated                             |
-| `plan.delete`         | Plan deactivated                         |
-| `subscription.assign` | Subscription assigned to a user          |
+| `profile.update`      | Profile self-update (admin or user)      |
+| `product.create`      | Product created                          |
+| `product.update`      | Product updated                          |
+| `product.delete`      | Product deactivated                      |
+| `purchase.create`     | Purchase created                         |
 | `subscription.cancel` | Subscription cancelled                   |
+| `sub-user.create`     | Sub-user created                         |
+| `sub-user.revoke`     | Sub-user revoked                         |
+| `membership.grant`    | Membership granted                       |
+| `membership.revoke`   | Membership revoked                       |
+| `feature.create`      | Feature created                          |
+| `feature.update`      | Feature updated                          |
+| `feature.delete`      | Feature deleted                          |
+| `setting.update`      | Site setting updated                     |
 
 Each log entry records: actor type, actor ID/email, action, resource,
 resource ID, optional metadata, client IP, user agent, HTTP method,
@@ -273,31 +352,34 @@ request path, and timestamp.
 - Change email (uniqueness check)
 - Change password (requires `currentPassword` + `newPassword`)
 
-## Subscription Plans
+## Products
 
-Plans are stored in the `Plan` collection and managed dynamically via the
-admin panel or API. The seed script creates four default plans:
+Products are stored in the `Product` collection and managed dynamically via the
+admin panel or API. The seed script creates seven default products:
 
-| Slug         | Price | Interval | Description                  |
-| ------------ | ----- | -------- | ---------------------------- |
-| `free`       | $0    | month    | Default plan on registration |
-| `starter`    | $9    | month    | Basic paid tier              |
-| `pro`        | $29   | month    | Professional tier            |
-| `enterprise` | $99   | month    | Full-featured tier           |
+| Slug                 | Price     | Type       | Payment Model | Max Sub-Users |
+| -------------------- | --------- | ---------- | ------------- | ------------- |
+| `free`               | $0/mo     | Membership | Recurring     | 0             |
+| `starter`            | $9.99/mo  | Membership | Recurring     | 3             |
+| `pro`                | $29.99/mo | Membership | Recurring     | 10            |
+| `enterprise`         | $99.99/mo | Membership | Recurring     | Unlimited     |
+| `seo-report`         | $49.99    | Digital    | One-time      | -             |
+| `api-access-pass`    | $199.99   | Digital    | One-time      | -             |
+| `premium-membership` | $19.99/mo | Membership | Recurring     | 0             |
 
-Each plan has a `features` array (string list), `isActive` flag, and
-`sortOrder` for display ordering.
+Each product has an `accessKeys` array (feature keys granted on purchase),
+`isActive` flag, and `sortOrder` for display ordering.
 
-### Subscription Model
+### Purchase Model
 
-Subscriptions link users to plans and track history:
+Purchases link users to products and track history:
 
-- `status` — `active`, `cancelled`, `expired`, or `past_due`
-- `startDate` / `endDate` — Subscription period
+- `status` — `pending`, `completed`, `refunded`, `failed`, `active`, `cancelled`, or `expired`
+- `startDate` / `endDate` — Subscription period (for recurring products)
 - `externalId` — Optional external payment provider reference
 - `metadata` — Optional JSON for provider-specific data
 
-When a user is assigned a new plan, any existing active subscription is
+When a user is assigned a new recurring product, any existing active subscription is
 automatically cancelled. Users always have at most one active subscription.
 
 ## Default Seed
@@ -315,5 +397,21 @@ User:
 ```
 Email:    user@demo.com
 Password: ChangeMe123!
-Plan:     starter (assigned via subscription)
+Plan:     starter (assigned via purchase)
+```
+
+Sub-User:
+
+```
+Email:    sub@demo.com
+Password: ChangeMe123!
+Parent:   user@demo.com (inherits Starter features)
+```
+
+Site Settings:
+
+```
+auth.provider:           credentials
+auth.clerkPublishableKey: (empty)
+auth.clerkSecretKey:      (empty)
 ```

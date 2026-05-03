@@ -25,6 +25,7 @@ model Admin {
 model User {
   id                  String         @id @default(auto()) @map("_id") @db.ObjectId
   email               String         @unique
+  clerkId             String?        @unique
   name                String
   passwordHash        String
   status              String         @default("active") // active | disabled
@@ -100,21 +101,21 @@ model Product {
 }
 
 model Purchase {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String    @db.ObjectId
-  productId   String    @db.ObjectId
-  status      String    @default("completed") // pending | completed | refunded | failed | active | cancelled | expired
-  amount      Float
-  currency    String    @default("USD")
-  externalId  String? // Payment provider reference
-  startDate   DateTime  @default(now())
-  endDate     DateTime?
-  cancelledAt DateTime?
-  metadata    Json?
-  user        User      @relation(fields: [userId], references: [id])
-  product     Product   @relation(fields: [productId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String    @db.ObjectId
+  productId       String    @db.ObjectId
+  status          String    @default("completed") // pending | completed | refunded | failed | active | cancelled | expired
+  amount          Float
+  currency        String    @default("USD")
+  externalId      String? // Payment provider reference
+  startDate       DateTime  @default(now())
+  endDate         DateTime?
+  cancelledAt     DateTime?
+  metadata        Json?
+  user            User      @relation(fields: [userId], references: [id])
+  product         Product   @relation(fields: [productId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Membership {
@@ -131,12 +132,20 @@ model Membership {
 }
 
 model Feature {
-  id          String  @id @default(auto()) @map("_id") @db.ObjectId
-  key         String  @unique
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
   description String
   category    String
-  isActive    Boolean @default(true)
-  sortOrder   Int     @default(0)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model SiteSetting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -7,7 +7,11 @@ export type SubUser = {
 };
 
 export type CreateSubUserInput = {
-  name: string;
   email: string;
-  password: string;
+};
+
+export type CreateSubUserResult = {
+  user: SubUser;
+  linked: boolean;
+  generatedPassword: string | null;
 };

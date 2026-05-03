@@ -21,7 +21,11 @@ export type {
 export type { FeaturesState, AdminResourceState } from "./hooks";
 export type { AuthUser, UpdateAdminProfileInput } from "./auth";
 export type { AppUser, UpdateUserProfileInput } from "./user";
-export type { SubUser, CreateSubUserInput } from "./sub-user";
+export type {
+  SubUser,
+  CreateSubUserInput,
+  CreateSubUserResult,
+} from "./sub-user";
 export type { FeatureFlag } from "./feature";
 export type { Product } from "./product";
 export type { Purchase } from "./purchase";
@@ -32,3 +36,4 @@ export type {
   ReportPeriod,
 } from "./report";
 export type { ActivityLogEntry, ActivityLogList } from "./activity-log";
+export type { AuthProvider, PublicAuthConfig } from "./setting";

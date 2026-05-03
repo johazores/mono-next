@@ -48,8 +48,9 @@ app-api/
 │   ├── report.ts      <- RevenueSummary, SubscriptionStats, PurchaseStats, UserStats, UserActivityReport
 │   ├── activity-log.ts <- ActivityAction, ActivityActor, ActivityLogRecord, ActivityLogFilter
 │   ├── rate-limiter.ts <- RateLimitEntry, RateLimitConfig, RateLimitResult
-│   └── response.ts    <- ApiResponse<T>, ListResponse<T>
-├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf, request-utils)
+│   ├── response.ts    <- ApiResponse<T>, ListResponse<T>
+│   └── setting.ts     <- AuthProvider, AuthConfig, PublicAuthConfig, SettingRecord
+├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf, request-utils, clerk-auth)
 └── prisma/            <- Schema + seed scripts
 ```
 
@@ -75,7 +76,7 @@ app-api/
 - **Dual cookie-based sessions**: Separate `admin_session` (7d) and `user_session` (14d) cookies
 - **Secure admin URLs**: Admin auth endpoints served from `/api/panel/*` (non-predictable path)
 - **Product and purchase management**: Products stored in DB with type (physical, digital, membership) and payment model (one-time, recurring). Users linked via Purchase model with full history. Recurring purchases serve as subscriptions.
-- **User hierarchy**: Users can create sub-users. Sub-users inherit the parent's plan features. If a sub-user independently purchases a subscription that includes `sub-users.create` and allows sub-users (`maxSubUsers != 0`), they can create their own sub-users. Revoking a sub-user cancels their inherited purchase and membership, then detaches them (clears `parentId`/`ancestors`), so the account remains active and independent. The `parentId` and `ancestors` fields on the User model track the relationship.
+- **User hierarchy**: Users can create sub-users. Sub-users dynamically inherit the parent's subscription plan and features at runtime (no separate purchase or membership is created). If a sub-user independently purchases a subscription that includes `sub-users.create` and allows sub-users (`maxSubUsers != 0`), they can create their own sub-users. Revoking a sub-user detaches them from the parent (clears `parentId`/`ancestors`), so the account remains active and independent but loses inherited features. The `parentId` and `ancestors` fields on the User model track the relationship.
 - **Membership-based access**: Purchases grant feature access via Membership records. Feature checks resolve direct membership keys first, then inherited parent features. `getEnabledFeatures()` correctly marks a sub-user's own memberships as `"direct"` and parent-inherited ones as `"inherited"`.
 - **Feature flags**: Feature definitions stored in DB with in-memory cache. `featureService.checkAccess()` checks direct and inherited sources.
 - **Prisma singleton**: `globalThis` caching prevents connection leaks during hot reload
@@ -94,6 +95,7 @@ app-api/
   - `Membership` — Feature access grants from purchases (userId -> User, type, sourceId, featureKeys, status, expiresAt)
   - `Feature` — Feature definitions (key, description, category, isActive, sortOrder)
   - `ActivityLog` — Audit trail (actor, actorId, actorEmail, action, resource, resourceId, metadata, ip, userAgent, method, path, createdAt)
+  - `SiteSetting` — Key-value configuration store (key, JSON value) for auth provider and system settings
   - All models include `createdAt` (auto-set) and `updatedAt` (auto-managed by Prisma), except `ActivityLog` which only has `createdAt`
 - **Schema location**: `app-api/prisma/schema.prisma`
 
@@ -117,10 +119,11 @@ app-client/
 │   │       ├── features/      <- Feature flag management (/admin/features)
 │   │       ├── reports/       <- Reports dashboard (/admin/reports)
 │   │       ├── activity/      <- Activity log viewer (/admin/activity)
+│   │       ├── settings/      <- Auth provider and system settings (/admin/settings)
 │   │       └── profile/       <- Admin profile management (/admin/profile)
 │   ├── (user)/        <- Protected user pages (auth guard in layout)
 │   │   ├── layout.tsx <- Auth check, redirects to /user-login
-│   │   ├── dashboard/ <- User dashboard
+│   │   ├── my-account/ <- User dashboard (/my-account)
 │   │   ├── account/   <- Profile edit, password change, active plan info
 │   │   ├── features/  <- View enabled features by source
 │   │   ├── sub-users/ <- Manage sub-users (requires sub-users.create feature)
@@ -133,9 +136,10 @@ app-client/
 ├── components/
 │   ├── ui/            <- Reusable primitives (Button, Modal, Notice, StatusBadge)
 │   ├── layout/        <- App shells (AdminShell with sidebar nav + logout)
+│   ├── auth/          <- Auth provider context (AuthConfigProvider, ClerkSignIn, ClerkSignUp)
 │   └── admin/         <- Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer)
 ├── hooks/             <- Custom React hooks (useAdminResource)
-├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, feature-service, sub-user-service, purchase-service, report-service, activity-log-service)
+├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, feature-service, sub-user-service, purchase-service, report-service, activity-log-service, setting-service, admin-setting-service)
 └── types/             <- Shared type definitions (barrel-exported via index.ts)
     ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
     ├── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection, FieldRendererProps, DynamicOption, ResourceManagerProps, ResourceEditorProps, ResourceListProps
@@ -148,7 +152,8 @@ app-client/
     ├── product.ts     <- Product
     ├── purchase.ts    <- Purchase
     ├── report.ts      <- AdminReport, ReportPeriod, ProductBreakdown, SubscriptionBreakdown
-    └── activity-log.ts <- ActivityLogEntry, ActivityLogList
+    ├── activity-log.ts <- ActivityLogEntry, ActivityLogList
+    └── setting.ts     <- AuthProvider, PublicAuthConfig
 ```
 
 ### Key Patterns

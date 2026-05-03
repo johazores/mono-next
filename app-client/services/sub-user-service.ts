@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiDelete } from "@/services/api-client";
-import type { SubUser, CreateSubUserInput } from "@/types";
+import type { SubUser, CreateSubUserInput, CreateSubUserResult } from "@/types";
 
 const ENDPOINT = "/api/users/auth/sub-users";
 
@@ -9,8 +9,9 @@ export const subUserService = {
     return result.data?.items ?? [];
   },
 
-  async create(input: CreateSubUserInput): Promise<void> {
-    await apiPost(ENDPOINT, input);
+  async create(input: CreateSubUserInput): Promise<CreateSubUserResult> {
+    const result = await apiPost<CreateSubUserResult>(ENDPOINT, input);
+    return result.data!;
   },
 
   async revoke(id: string): Promise<void> {

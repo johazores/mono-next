@@ -26,18 +26,15 @@ export async function subUserCollectionController(
 
   if (req.method === "POST") {
     try {
-      const subUser = await userService.createSubUser(
-        session.user.id,
-        req.body,
-      );
+      const result = await userService.createSubUser(session.user.id, req.body);
       await logActivity(req, "sub-user.create", {
         actor: "user",
         actorId: session.user.id,
         actorEmail: session.user.email,
         resource: "user",
-        resourceId: subUser?.id,
+        resourceId: result.user.id,
       });
-      return sendOk(res, subUser, 201);
+      return sendOk(res, result, 201);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Request failed.";
       return sendError(res, message, 400);

@@ -293,7 +293,7 @@ const fakePurchase = {
 };
 
 describe("userService.createSubUser", () => {
-  it("creates a sub-user when plan allows it", async () => {
+  it("creates a new sub-user with generated password when email is new", async () => {
     const parent = fakeUser();
     const child = fakeUser({
       id: "child-1",
@@ -308,25 +308,85 @@ describe("userService.createSubUser", () => {
       fakePurchase as never,
     );
     repo.findDescendants.mockResolvedValue([] as never);
+    repo.findByEmailWithPassword.mockResolvedValue(null as never);
     repo.create.mockResolvedValue(child as never);
-    purchaseRepo.create.mockResolvedValue({ id: "new-purchase" } as never);
 
     const result = await userService.createSubUser("user-1", {
-      name: "Child",
       email: "child@test.com",
-      password: "ChildPass1!",
     });
 
-    expect(result).not.toBeNull();
-    expect(result!.name).toBe("Child");
-    expect(result!.parentId).toBe("user-1");
+    expect(result.linked).toBe(false);
+    expect(result.generatedPassword).toBeTruthy();
+    expect(result.user.name).toBe("Child");
+    expect(result.user.parentId).toBe("user-1");
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: "Child",
+        name: "child",
         email: "child@test.com",
         ancestors: ["user-1"],
       }),
     );
+  });
+
+  it("links an existing user instead of creating a duplicate", async () => {
+    const parent = fakeUser();
+    const existing = {
+      ...fakeUser({ id: "existing-1", email: "existing@test.com" }),
+      passwordHash: "hash",
+      parentId: null,
+    };
+    const updated = fakeUser({
+      id: "existing-1",
+      email: "existing@test.com",
+      parentId: "user-1",
+      ancestors: ["user-1"],
+    });
+
+    repo.findById.mockResolvedValue(parent as never);
+    purchaseRepo.findActiveSubscription.mockResolvedValue(
+      fakePurchase as never,
+    );
+    repo.findDescendants.mockResolvedValue([] as never);
+    repo.findByEmailWithPassword.mockResolvedValue(existing as never);
+    repo.update.mockResolvedValue(updated as never);
+
+    const result = await userService.createSubUser("user-1", {
+      email: "existing@test.com",
+    });
+
+    expect(result.linked).toBe(true);
+    expect(result.generatedPassword).toBeNull();
+    expect(result.user.parentId).toBe("user-1");
+    expect(repo.create).not.toHaveBeenCalled();
+    expect(repo.update).toHaveBeenCalledWith(
+      "existing-1",
+      expect.objectContaining({
+        parent: { connect: { id: "user-1" } },
+        ancestors: ["user-1"],
+      }),
+    );
+  });
+
+  it("throws when linking a user already under another parent", async () => {
+    const parent = fakeUser();
+    const alreadySub = {
+      ...fakeUser({ id: "taken-1", email: "taken@test.com" }),
+      passwordHash: "hash",
+      parentId: "other-parent",
+    };
+
+    repo.findById.mockResolvedValue(parent as never);
+    purchaseRepo.findActiveSubscription.mockResolvedValue(
+      fakePurchase as never,
+    );
+    repo.findDescendants.mockResolvedValue([] as never);
+    repo.findByEmailWithPassword.mockResolvedValue(alreadySub as never);
+
+    await expect(
+      userService.createSubUser("user-1", {
+        email: "taken@test.com",
+      }),
+    ).rejects.toThrow("This user is already a sub-user of another account.");
   });
 
   it("throws when parent not found", async () => {
@@ -334,9 +394,7 @@ describe("userService.createSubUser", () => {
 
     await expect(
       userService.createSubUser("nonexistent", {
-        name: "Child",
         email: "child@test.com",
-        password: "ChildPass1!",
       }),
     ).rejects.toThrow("Parent user not found.");
   });
@@ -347,9 +405,7 @@ describe("userService.createSubUser", () => {
 
     await expect(
       userService.createSubUser("user-1", {
-        name: "Child",
         email: "child@test.com",
-        password: "ChildPass1!",
       }),
     ).rejects.toThrow("No active subscription. Cannot create sub-users.");
   });
@@ -363,9 +419,7 @@ describe("userService.createSubUser", () => {
 
     await expect(
       userService.createSubUser("user-1", {
-        name: "Child",
         email: "child@test.com",
-        password: "ChildPass1!",
       }),
     ).rejects.toThrow("Your plan does not allow sub-users.");
   });
@@ -384,9 +438,7 @@ describe("userService.createSubUser", () => {
 
     await expect(
       userService.createSubUser("user-1", {
-        name: "Child",
         email: "child@test.com",
-        password: "ChildPass1!",
       }),
     ).rejects.toThrow("Sub-user limit reached (3)");
   });
@@ -406,16 +458,14 @@ describe("userService.createSubUser", () => {
       ...fakePurchase,
       product: { ...fakePurchase.product, maxSubUsers: -1 },
     } as never);
+    repo.findByEmailWithPassword.mockResolvedValue(null as never);
     repo.create.mockResolvedValue(child as never);
-    purchaseRepo.create.mockResolvedValue({ id: "new-purchase" } as never);
 
     const result = await userService.createSubUser("user-1", {
-      name: "Child",
       email: "child@test.com",
-      password: "ChildPass1!",
     });
 
-    expect(result).not.toBeNull();
+    expect(result.user).not.toBeNull();
     // findDescendants should NOT have been called for unlimited
     expect(repo.findDescendants).not.toHaveBeenCalled();
   });
@@ -429,11 +479,9 @@ describe("userService.createSubUser", () => {
 
     await expect(
       userService.createSubUser("user-1", {
-        name: "",
-        email: "child@test.com",
-        password: "ChildPass1!",
+        email: "",
       }),
-    ).rejects.toThrow("Name, email, and password are required.");
+    ).rejects.toThrow("Email is required.");
   });
 
   it("throws when parent is a sub-user without own subscription", async () => {
@@ -448,9 +496,7 @@ describe("userService.createSubUser", () => {
 
     await expect(
       userService.createSubUser("sub-1", {
-        name: "GC",
         email: "gc@test.com",
-        password: "GcPass123!",
       }),
     ).rejects.toThrow("No active subscription. Cannot create sub-users.");
   });
@@ -486,17 +532,15 @@ describe("userService.createSubUser", () => {
     // First call: sub-user's own subscription (qualifies)
     purchaseRepo.findActiveSubscription.mockResolvedValue(proProduct as never);
     repo.findDescendants.mockResolvedValue([] as never);
+    repo.findByEmailWithPassword.mockResolvedValue(null as never);
     repo.create.mockResolvedValue(grandchild as never);
-    purchaseRepo.create.mockResolvedValue({ id: "gc-purchase" } as never);
 
     const result = await userService.createSubUser("sub-1", {
-      name: "Grandchild",
       email: "gc@test.com",
-      password: "GcPass123!",
     });
 
-    expect(result).not.toBeNull();
-    expect(result!.parentId).toBe("sub-1");
+    expect(result.user).not.toBeNull();
+    expect(result.user.parentId).toBe("sub-1");
   });
 
   it("rejects sub-user whose subscription does not allow sub-users", async () => {
@@ -522,9 +566,7 @@ describe("userService.createSubUser", () => {
 
     await expect(
       userService.createSubUser("sub-1", {
-        name: "GC",
         email: "gc@test.com",
-        password: "GcPass123!",
       }),
     ).rejects.toThrow("Sub-users cannot create their own sub-users.");
   });
@@ -554,37 +596,20 @@ describe("userService.listSubUsers", () => {
 });
 
 describe("userService.revokeSubUser", () => {
-  it("revokes inherited purchase, membership, and detaches from parent", async () => {
+  it("detaches sub-user from parent", async () => {
     const child = fakeUser({
       id: "child-1",
       parentId: "user-1",
       ancestors: ["user-1"],
     });
     const detached = { ...child, parentId: null, ancestors: [] };
-    const inheritedPurchase = {
-      id: "inherited-p",
-      userId: "child-1",
-      amount: 0,
-      status: "active",
-      product: fakePurchase.product,
-    };
 
     repo.findById.mockResolvedValue(child as never);
     repo.countChildren.mockResolvedValue(0 as never);
-    purchaseRepo.findByUserId.mockResolvedValue([inheritedPurchase] as never);
-    purchaseRepo.update.mockResolvedValue(inheritedPurchase as never);
     repo.update.mockResolvedValue(detached as never);
 
     const result = await userService.revokeSubUser("user-1", "child-1");
 
-    expect(purchaseRepo.update).toHaveBeenCalledWith("inherited-p", {
-      status: "cancelled",
-      cancelledAt: expect.any(Date),
-    });
-    const { membershipService } = await import("@/services/membership-service");
-    expect(membershipService.revokeBySource).toHaveBeenCalledWith(
-      "inherited-p",
-    );
     expect(repo.update).toHaveBeenCalledWith("child-1", {
       parent: { disconnect: true },
       ancestors: { set: [] },
@@ -592,31 +617,6 @@ describe("userService.revokeSubUser", () => {
     expect(result).not.toBeNull();
     expect(result!.parentId).toBeNull();
     expect(result).not.toHaveProperty("passwordHash");
-  });
-
-  it("detaches even when no inherited purchase exists", async () => {
-    const child = fakeUser({
-      id: "child-1",
-      parentId: "user-1",
-      ancestors: ["user-1"],
-    });
-    const detached = { ...child, parentId: null, ancestors: [] };
-
-    repo.findById.mockResolvedValue(child as never);
-    repo.countChildren.mockResolvedValue(0 as never);
-    purchaseRepo.findByUserId.mockResolvedValue([
-      { id: "own-p", amount: 29.99, status: "active" },
-    ] as never);
-    repo.update.mockResolvedValue(detached as never);
-
-    const result = await userService.revokeSubUser("user-1", "child-1");
-
-    expect(purchaseRepo.update).not.toHaveBeenCalled();
-    expect(repo.update).toHaveBeenCalledWith("child-1", {
-      parent: { disconnect: true },
-      ancestors: { set: [] },
-    });
-    expect(result!.parentId).toBeNull();
   });
 
   it("throws when sub-user not found", async () => {

@@ -26,7 +26,8 @@ export type ActivityAction =
   | "membership.revoke"
   | "feature.create"
   | "feature.update"
-  | "feature.delete";
+  | "feature.delete"
+  | "setting.update";
 
 export type ActivityActor = "admin" | "user" | "system";
 

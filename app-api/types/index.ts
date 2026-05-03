@@ -9,6 +9,7 @@ export type {
   UserRecord,
   CreateUserInput,
   CreateSubUserInput,
+  CreateSubUserResult,
   UpdateUserInput,
   UpdateUserProfileInput,
   UserAuthSession,
@@ -52,3 +53,9 @@ export type {
   RateLimitResult,
 } from "./rate-limiter";
 export type { ApiResponse, ListResponse } from "./response";
+export type {
+  AuthProvider,
+  AuthConfig,
+  PublicAuthConfig,
+  SettingRecord,
+} from "./setting";

@@ -1,17 +1,24 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useCallback, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { userAuthService } from "@/services/user-auth-service";
+import { useAuthConfig } from "@/components/auth/auth-config-provider";
+import { ClerkSignUp } from "@/components/auth/clerk-auth";
 
 export default function UserRegisterPage() {
   const router = useRouter();
+  const { provider, ready } = useAuthConfig();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleClerkSignUp = useCallback(() => {
+    router.push("/my-account");
+  }, [router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -20,12 +27,34 @@ export default function UserRegisterPage() {
 
     try {
       await userAuthService.register(name, email, password);
-      router.push("/dashboard");
+      router.push("/my-account");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-full items-center justify-center">
+        <p className="text-sm text-gray-400">Loading&hellip;</p>
+      </div>
+    );
+  }
+
+  if (provider === "clerk") {
+    return (
+      <div className="flex min-h-full items-center justify-center px-4">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900">mono-next</h1>
+            <p className="mt-1 text-sm text-gray-500">Create your account</p>
+          </div>
+          <ClerkSignUp afterSignUp={handleClerkSignUp} />
+        </div>
+      </div>
+    );
   }
 
   return (

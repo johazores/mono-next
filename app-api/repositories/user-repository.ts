@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 const safeSelect = {
   id: true,
   email: true,
+  clerkId: true,
   name: true,
   status: true,
   parentId: true,
@@ -30,6 +31,9 @@ export const userRepository = {
     return prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
     });
+  },
+  findByClerkId(clerkId: string) {
+    return prisma.user.findUnique({ where: { clerkId } });
   },
   findByIdWithPassword(id: string) {
     return prisma.user.findUnique({ where: { id } });

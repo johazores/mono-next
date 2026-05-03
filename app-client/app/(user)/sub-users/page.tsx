@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getMyFeatures } from "@/services/feature-service";
 import { subUserService } from "@/services/sub-user-service";
-import type { SubUser } from "@/types";
+import type { SubUser, CreateSubUserResult } from "@/types";
 import { Button, Modal, Notice } from "@/components/ui";
 
 export default function SubUsersPage() {
@@ -12,17 +12,19 @@ export default function SubUsersPage() {
   const [error, setError] = useState("");
   const [canCreate, setCanCreate] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [createResult, setCreateResult] = useState<CreateSubUserResult | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     try {
+      setError("");
       const features = await getMyFeatures();
       const hasSubUserFeature = features.some(
         (f) => f.key === "sub-users.create" && f.enabled,
@@ -46,13 +48,23 @@ export default function SubUsersPage() {
     e.preventDefault();
     setSaving(true);
     setMessage(null);
+    setCreateResult(null);
     try {
-      await subUserService.create({ name, email, password });
-      setName("");
+      const result = await subUserService.create({ email });
       setEmail("");
-      setPassword("");
       setShowCreate(false);
-      setMessage({ type: "success", text: "Sub-user created." });
+      setCreateResult(result);
+      if (result.linked) {
+        setMessage({
+          type: "success",
+          text: `Existing user "${result.user.email}" has been linked as a sub-user.`,
+        });
+      } else {
+        setMessage({
+          type: "success",
+          text: `New sub-user "${result.user.email}" has been created.`,
+        });
+      }
       load();
     } catch (err) {
       setMessage({
@@ -96,11 +108,25 @@ export default function SubUsersPage() {
           </p>
         </div>
         {canCreate && (
-          <Button onClick={() => setShowCreate(true)}>Create Sub-User</Button>
+          <Button onClick={() => setShowCreate(true)}>Add Sub-User</Button>
         )}
       </div>
 
       {message && <Notice message={message.text} variant={message.type} />}
+
+      {createResult?.generatedPassword && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-800">
+            Generated password for {createResult.user.email}:
+          </p>
+          <code className="mt-1 block rounded bg-white px-3 py-2 font-mono text-sm text-gray-900 select-all">
+            {createResult.generatedPassword}
+          </code>
+          <p className="mt-2 text-xs text-amber-600">
+            Save this password now. It will not be shown again.
+          </p>
+        </div>
+      )}
 
       {!canCreate && !loading && (
         <Notice
@@ -165,7 +191,7 @@ export default function SubUsersPage() {
       {/* Create modal */}
       {showCreate && (
         <Modal
-          title="Create Sub-User"
+          title="Add Sub-User"
           onClose={() => setShowCreate(false)}
           footer={
             <div className="flex justify-end gap-2">
@@ -182,7 +208,7 @@ export default function SubUsersPage() {
                 }
                 disabled={saving}
               >
-                {saving ? "Creating…" : "Create"}
+                {saving ? "Adding…" : "Add"}
               </Button>
             </div>
           }
@@ -194,18 +220,6 @@ export default function SubUsersPage() {
           >
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
@@ -215,20 +229,9 @@ export default function SubUsersPage() {
                 required
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-              />
               <p className="mt-1 text-xs text-gray-400">
-                Min 8 chars, uppercase, lowercase, digit.
+                If this email already exists, the user will be linked instead of
+                created.
               </p>
             </div>
           </form>

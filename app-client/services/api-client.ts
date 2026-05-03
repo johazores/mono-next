@@ -4,6 +4,12 @@ export type { ApiResult, ApiRequestOptions };
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
+let tokenGetter: (() => Promise<string | null>) | null = null;
+
+export function setTokenGetter(getter: (() => Promise<string | null>) | null) {
+  tokenGetter = getter;
+}
+
 async function parseResponse<T>(response: Response): Promise<ApiResult<T>> {
   let result: ApiResult<T>;
 
@@ -36,6 +42,13 @@ export async function apiRequest<T = unknown>(
   if (body !== undefined) {
     headers.set("Content-Type", "application/json");
     request.body = JSON.stringify(body);
+  }
+
+  if (tokenGetter) {
+    const token = await tokenGetter();
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
   }
 
   const url = path.startsWith("http") ? path : `${baseUrl}${path}`;

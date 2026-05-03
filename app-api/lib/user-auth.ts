@@ -3,6 +3,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/prisma";
 import { sendError } from "@/lib/api-response";
 import { getUserSessionSecret } from "@/lib/secure-credentials";
+import { verifyClerkToken } from "@/lib/clerk-auth";
+import { settingService } from "@/services/setting-service";
 import type { AccountStatus, UserAuthSession } from "@/types";
 
 const COOKIE_NAME = "user_session";
@@ -54,6 +56,60 @@ export async function clearUserSession(
 export async function getUserSession(
   req: NextApiRequest,
 ): Promise<UserAuthSession | null> {
+  // Check auth provider config
+  const authConfig = await settingService.getAuthConfig();
+
+  if (authConfig.provider === "clerk") {
+    return getClerkUserSession(req);
+  }
+
+  return getCredentialUserSession(req);
+}
+
+async function getClerkUserSession(
+  req: NextApiRequest,
+): Promise<UserAuthSession | null> {
+  const clerkPayload = await verifyClerkToken(req);
+  if (!clerkPayload?.email) return null;
+
+  const email = clerkPayload.email.toLowerCase().trim();
+
+  // Look up by clerkId first, then fall back to email
+  let user = await prisma.user.findUnique({
+    where: { clerkId: clerkPayload.sub },
+  });
+
+  if (!user) {
+    // Check if a user with this email already exists (e.g. migrated from credentials)
+    user = await prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      // Link existing user to Clerk
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { clerkId: clerkPayload.sub },
+      });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email,
+          clerkId: clerkPayload.sub,
+          name: clerkPayload.name || clerkPayload.email,
+          passwordHash: "", // No password for Clerk users
+          status: "active",
+        },
+      });
+    }
+  }
+
+  if (user.status !== "active") return null;
+
+  return buildUserAuthSession(user);
+}
+
+async function getCredentialUserSession(
+  req: NextApiRequest,
+): Promise<UserAuthSession | null> {
   const token = req.cookies[COOKIE_NAME];
   if (!token) return null;
 
@@ -75,10 +131,20 @@ export async function getUserSession(
     return null;
   }
 
+  return buildUserAuthSession(session.user);
+}
+
+async function buildUserAuthSession(user: {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  parentId: string | null;
+}): Promise<UserAuthSession> {
   // Fetch active subscription (recurring purchase)
-  const activeSub = await prisma.purchase.findFirst({
+  let activeSub = await prisma.purchase.findFirst({
     where: {
-      userId: session.user.id,
+      userId: user.id,
       status: "active",
       product: { paymentModel: "recurring" },
     },
@@ -86,11 +152,24 @@ export async function getUserSession(
     orderBy: { createdAt: "desc" },
   });
 
+  // Sub-users inherit their parent's plan when they have no own subscription
+  if (!activeSub && user.parentId) {
+    activeSub = await prisma.purchase.findFirst({
+      where: {
+        userId: user.parentId,
+        status: "active",
+        product: { paymentModel: "recurring" },
+      },
+      include: { product: { select: { name: true, slug: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
   // Fetch parent info if this is a sub-user
   let parentInfo: { name: string; email: string } | null = null;
-  if (session.user.parentId) {
+  if (user.parentId) {
     const parentUser = await prisma.user.findUnique({
-      where: { id: session.user.parentId },
+      where: { id: user.parentId },
       select: { name: true, email: true },
     });
     if (parentUser) {
@@ -100,11 +179,11 @@ export async function getUserSession(
 
   return {
     user: {
-      id: session.user.id,
-      name: session.user.name,
-      email: session.user.email,
-      status: session.user.status as AccountStatus,
-      parentId: session.user.parentId,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      status: user.status as AccountStatus,
+      parentId: user.parentId,
       parent: parentInfo,
       activePlan: activeSub
         ? {
