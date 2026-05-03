@@ -34,8 +34,8 @@ product and purchase management, membership-based access control, user hierarchy
 (sub-users), reporting, CSRF protection, security headers, and a layered
 architecture (controller, service, repository).
 
-Sub-users inherit their parent's plan features but cannot create sub-users of
-their own.
+Sub-users inherit their parent's plan features. Promoted sub-users with their
+own qualifying subscription can create sub-users of their own.
 
 ### app-client
 

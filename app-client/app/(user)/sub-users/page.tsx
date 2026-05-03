@@ -1,24 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiGet, apiPost, apiDelete } from "@/services/api-client";
-import { userAuthService } from "@/services/user-auth-service";
+import { getMyFeatures } from "@/services/feature-service";
+import { subUserService } from "@/services/sub-user-service";
+import type { SubUser } from "@/types";
 import { Button, Modal, Notice } from "@/components/ui";
-
-type SubUser = {
-  id: string;
-  name: string;
-  email: string;
-  status: string;
-  purchaseCount?: number;
-  createdAt: string;
-};
 
 export default function SubUsersPage() {
   const [items, setItems] = useState<SubUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isSubUser, setIsSubUser] = useState(false);
+  const [canCreate, setCanCreate] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,16 +23,14 @@ export default function SubUsersPage() {
 
   const load = useCallback(async () => {
     try {
-      const me = await userAuthService.me();
-      if (me.ok && me.data?.parentId) {
-        setIsSubUser(true);
-        setLoading(false);
-        return;
-      }
-      const res = await apiGet<{ items: SubUser[] }>(
-        "/api/users/auth/sub-users",
+      const features = await getMyFeatures();
+      const hasSubUserFeature = features.some(
+        (f) => f.key === "sub-users.create" && f.enabled,
       );
-      if (res.ok && res.data) setItems(res.data.items);
+      setCanCreate(hasSubUserFeature);
+
+      const items = await subUserService.list();
+      setItems(items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load.");
     } finally {
@@ -57,7 +47,7 @@ export default function SubUsersPage() {
     setSaving(true);
     setMessage(null);
     try {
-      await apiPost("/api/users/auth/sub-users", { name, email, password });
+      await subUserService.create({ name, email, password });
       setName("");
       setEmail("");
       setPassword("");
@@ -74,28 +64,24 @@ export default function SubUsersPage() {
     }
   }
 
-  async function handleDelete(user: SubUser) {
-    const hasPurchases = (user.purchaseCount ?? 0) > 0;
-    const action = hasPurchases ? "block" : "delete";
-    const confirmMsg = hasPurchases
-      ? `This sub-user has ${user.purchaseCount} purchase(s). They will be blocked instead of deleted to preserve their purchase records. Continue?`
-      : "Delete this sub-user?";
-
-    if (!confirm(confirmMsg)) return;
+  async function handleRevoke(user: SubUser) {
+    if (
+      !confirm(
+        "Revoke this sub-user? They will lose access to your subscription's features but keep their own account and purchases.",
+      )
+    )
+      return;
     try {
-      await apiDelete(`/api/users/auth/sub-users/${user.id}`);
+      await subUserService.revoke(user.id);
       setMessage({
         type: "success",
-        text:
-          action === "block"
-            ? "Sub-user has been blocked. Their purchase records are preserved."
-            : "Sub-user deleted.",
+        text: "Sub-user revoked. Their account is now independent.",
       });
       load();
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : `Failed to ${action}.`,
+        text: err instanceof Error ? err.message : "Failed to revoke.",
       });
     }
   }
@@ -109,16 +95,16 @@ export default function SubUsersPage() {
             Manage users under your account. They inherit your features.
           </p>
         </div>
-        {!isSubUser && (
+        {canCreate && (
           <Button onClick={() => setShowCreate(true)}>Create Sub-User</Button>
         )}
       </div>
 
       {message && <Notice message={message.text} variant={message.type} />}
 
-      {isSubUser && (
+      {!canCreate && !loading && (
         <Notice
-          message="Sub-users cannot manage their own sub-users. This feature is only available to account owners."
+          message="Your current plan does not include sub-user management. Upgrade to a plan with this feature."
           variant="info"
         />
       )}
@@ -126,7 +112,7 @@ export default function SubUsersPage() {
       {loading && <p className="text-sm text-gray-400">Loading&hellip;</p>}
       {error && <Notice message={error} variant="error" />}
 
-      {!loading && items.length === 0 && (
+      {!loading && canCreate && items.length === 0 && (
         <p className="text-sm text-gray-500">No sub-users yet.</p>
       )}
 
@@ -163,10 +149,10 @@ export default function SubUsersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => handleDelete(u)}
+                      onClick={() => handleRevoke(u)}
                       className="text-sm text-red-600 hover:text-red-800"
                     >
-                      {(u.purchaseCount ?? 0) > 0 ? "Block" : "Delete"}
+                      Revoke
                     </button>
                   </td>
                 </tr>

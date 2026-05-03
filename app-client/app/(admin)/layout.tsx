@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/layout/admin-shell";
-import { authService, type AuthUser } from "@/services/auth-service";
+import { authService } from "@/services/auth-service";
+import type { AuthUser } from "@/types";
 
 export default function AdminLayout({
   children,

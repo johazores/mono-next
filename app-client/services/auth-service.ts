@@ -1,18 +1,5 @@
 import { apiPost, apiGet, apiPut } from "./api-client";
-
-export type AuthUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-};
-
-export type UpdateAdminProfileInput = {
-  name?: string;
-  currentPassword?: string;
-  newPassword?: string;
-};
+import type { AuthUser, UpdateAdminProfileInput } from "@/types";
 
 export const authService = {
   async login(email: string, password: string) {

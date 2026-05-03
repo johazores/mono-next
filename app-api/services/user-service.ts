@@ -208,19 +208,26 @@ export const userService = {
     const parent = await userRepository.findById(parentId);
     if (!parent) throw new Error("Parent user not found.");
 
-    // Sub-users cannot create their own sub-users
+    // Sub-users can only create their own sub-users if they have an
+    // independent subscription whose product includes sub-users.create
+    // and allows sub-users (maxSubUsers != 0).
     const parentRecord = parent as UserRecord;
-    if (parentRecord.parentId) {
-      throw new Error("Sub-users cannot create their own sub-users.");
-    }
-
-    // Resolve the root ancestor's subscription to check sub-user limits
-    const rootId = parentId;
-    const rootSub = await purchaseRepository.findActiveSubscription(rootId);
-    if (!rootSub)
+    const creatorSub =
+      await purchaseRepository.findActiveSubscription(parentId);
+    if (!creatorSub)
       throw new Error("No active subscription. Cannot create sub-users.");
 
-    const product = rootSub.product;
+    if (parentRecord.parentId) {
+      const ownProduct = creatorSub.product as Record<string, unknown>;
+      const ownMax = (ownProduct.maxSubUsers as number) ?? 0;
+      const ownKeys = (ownProduct.accessKeys as string[]) ?? [];
+
+      if (ownMax === 0 || !ownKeys.includes("sub-users.create")) {
+        throw new Error("Sub-users cannot create their own sub-users.");
+      }
+    }
+
+    const product = creatorSub.product;
     const maxSubUsers = (product as Record<string, unknown>)
       .maxSubUsers as number;
 
@@ -229,8 +236,8 @@ export const userService = {
     }
 
     if (maxSubUsers > 0) {
-      // Count all descendants under the root, not just direct children
-      const descendants = await userRepository.findDescendants(rootId);
+      // Count all descendants under the creator, not just direct children
+      const descendants = await userRepository.findDescendants(parentId);
       if (descendants.length >= maxSubUsers) {
         throw new Error(
           `Sub-user limit reached (${maxSubUsers}). Upgrade your plan for more.`,
@@ -257,12 +264,12 @@ export const userService = {
     const safe = safeUser(user);
     if (!safe) return null;
 
-    // Sub-users inherit parent's subscription — assign same product
+    // Sub-users inherit creator's subscription — assign same product
     const subPurchase = await purchaseRepository.create({
       user: { connect: { id: safe.id } },
-      product: { connect: { id: rootSub.productId } },
+      product: { connect: { id: creatorSub.productId } },
       amount: 0,
-      currency: rootSub.currency,
+      currency: creatorSub.currency,
       status: "active",
     });
 
@@ -285,19 +292,12 @@ export const userService = {
   async listSubUsers(parentId: string): Promise<UserRecord[]> {
     const children = await userRepository.findByParentId(parentId);
     const enriched = await Promise.all(
-      (children as UserRecord[]).map(async (u) => {
-        const user = await enrichWithPlan(u);
-        if (!user) return null;
-        const purchases = await purchaseRepository.findByUserId(user.id);
-        (user as UserRecord & { purchaseCount?: number }).purchaseCount =
-          purchases.length;
-        return user;
-      }),
+      (children as UserRecord[]).map((u) => enrichWithPlan(u)),
     );
     return enriched.filter(Boolean) as UserRecord[];
   },
 
-  async deleteSubUser(
+  async revokeSubUser(
     parentId: string,
     subUserId: string,
   ): Promise<UserRecord | null> {
@@ -313,21 +313,32 @@ export const userService = {
     const childCount = await userRepository.countChildren(subUserId);
     if (childCount > 0) {
       throw new Error(
-        "Cannot delete a sub-user that has their own sub-users. Remove their sub-users first.",
+        "Cannot revoke a sub-user that has their own sub-users. Remove their sub-users first.",
       );
     }
 
-    // If sub-user has purchases, disable instead of deleting to preserve
-    // their purchase records and any purchase-based feature access
+    // Revoke the inherited purchase (amount=0) and its membership so the
+    // sub-user no longer retains benefits from the parent's subscription.
     const purchases = await purchaseRepository.findByUserId(subUserId);
-    if (purchases.length > 0) {
-      const updated = await userRepository.update(subUserId, {
-        status: "disabled",
+    const inherited = purchases.find(
+      (p) => p.amount === 0 && p.status === "active",
+    );
+    if (inherited) {
+      await purchaseRepository.update(inherited.id, {
+        status: "cancelled",
+        cancelledAt: new Date(),
       });
-      return safeUser(updated);
+      const { membershipService } =
+        await import("@/services/membership-service");
+      await membershipService.revokeBySource(inherited.id);
     }
 
-    const deleted = await userRepository.delete(subUserId);
-    return safeUser(deleted);
+    // Detach from parent — the user keeps their account and any independent
+    // purchases/memberships but loses inherited features from the parent.
+    const updated = await userRepository.update(subUserId, {
+      parent: { disconnect: true },
+      ancestors: { set: [] },
+    });
+    return safeUser(updated);
   },
 };

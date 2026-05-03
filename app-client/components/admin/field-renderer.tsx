@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiGet } from "@/services/api-client";
+import { resourceService } from "@/services/resource-service";
 import type { ResourceField } from "@/types";
 
 type FieldRendererProps = {
@@ -139,12 +139,10 @@ function CheckboxesField({
     }
     setLoadingOpts(true);
     try {
-      const res = await apiGet<{ items: DynamicOption[] }>(
+      const items = await resourceService.fetchOptions<DynamicOption>(
         field.optionsEndpoint,
       );
-      if (res.ok && res.data?.items) {
-        setOptions(res.data.items);
-      }
+      setOptions(items);
     } catch {
       // Silently fall back to empty
     } finally {

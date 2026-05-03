@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import {
-  activityLogService,
-  type ActivityLogEntry,
-} from "@/services/activity-log-service";
+import { activityLogService } from "@/services/activity-log-service";
+import type { ActivityLogEntry } from "@/types";
 
 const PAGE_SIZE = 20;
 

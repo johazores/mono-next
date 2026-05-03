@@ -1,27 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiGet, apiPost } from "@/services/api-client";
+import { purchaseService } from "@/services/purchase-service";
+import type { Product, Purchase } from "@/types";
 import { Button, Modal, Notice } from "@/components/ui";
-
-type Product = {
-  id: string;
-  name: string;
-  slug: string;
-  type: string;
-  price: number;
-  currency: string;
-  description: string | null;
-};
-
-type Purchase = {
-  id: string;
-  status: string;
-  amount: number;
-  currency: string;
-  createdAt: string;
-  product?: { name: string; type: string };
-};
 
 export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -36,10 +18,8 @@ export default function PurchasesPage() {
 
   const loadPurchases = useCallback(async () => {
     try {
-      const res = await apiGet<{ items: Purchase[] }>(
-        "/api/users/auth/purchases",
-      );
-      if (res.ok && res.data) setPurchases(res.data.items);
+      const items = await purchaseService.listPurchases();
+      setPurchases(items);
     } catch {
       // silent
     } finally {
@@ -49,8 +29,8 @@ export default function PurchasesPage() {
 
   const loadProducts = useCallback(async () => {
     try {
-      const res = await apiGet<{ items: Product[] }>("/api/products/public");
-      if (res.ok && res.data) setProducts(res.data.items);
+      const items = await purchaseService.listPublicProducts();
+      setProducts(items);
     } catch {
       // silent
     }
@@ -69,7 +49,7 @@ export default function PurchasesPage() {
     setBuying(productId);
     setMessage(null);
     try {
-      await apiPost("/api/users/auth/purchases", { productId });
+      await purchaseService.buy(productId);
       setMessage({ type: "success", text: "Purchase completed!" });
       setShowStore(false);
       loadPurchases();

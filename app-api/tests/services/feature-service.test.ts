@@ -105,7 +105,10 @@ describe("featureService.checkAccess", () => {
       { featureKeys: ["reports.advanced"] },
     ] as never);
 
-    const result = await featureService.checkAccess("sub-1", "reports.advanced");
+    const result = await featureService.checkAccess(
+      "sub-1",
+      "reports.advanced",
+    );
 
     expect(result).toEqual({
       key: "reports.advanced",
@@ -186,7 +189,7 @@ describe("featureService.getEnabledFeatures", () => {
     ]);
   });
 
-  it("returns inherited source for sub-user features", async () => {
+  it("returns direct source for sub-user's own memberships", async () => {
     userRepo.findById.mockResolvedValue({
       id: "sub-1",
       parentId: "root-1",
@@ -204,14 +207,14 @@ describe("featureService.getEnabledFeatures", () => {
         description: "5 GB storage",
         category: "storage",
         enabled: true,
-        source: "inherited",
+        source: "direct",
       },
       {
         key: "api.access",
         description: "API access",
         category: "features",
         enabled: true,
-        source: "inherited",
+        source: "direct",
       },
     ]);
   });

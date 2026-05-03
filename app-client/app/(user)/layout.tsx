@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserShell } from "@/components/layout/user-shell";
-import { userAuthService, type AppUser } from "@/services/user-auth-service";
+import { userAuthService } from "@/services/user-auth-service";
+import type { AppUser } from "@/types";
 
 export default function UserLayout({
   children,

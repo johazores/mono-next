@@ -288,6 +288,65 @@ async function main() {
     },
   });
   console.log("Membership granted: Demo User -> Starter features");
+
+  // Seed a sub-user under the demo user to exercise the hierarchy system
+  const subUserHash = hashPassword("ChangeMe123!");
+  const subUser = await prisma.user.upsert({
+    where: { email: "sub@demo.com" },
+    update: {
+      passwordHash: subUserHash,
+      parentId: user.id,
+      ancestors: [user.id],
+    },
+    create: {
+      name: "Demo Sub-User",
+      email: "sub@demo.com",
+      passwordHash: subUserHash,
+      status: "active",
+      parentId: user.id,
+      ancestors: [user.id],
+    },
+  });
+  console.log("Sub-user seeded:", subUser.email);
+
+  // Assign inherited subscription to sub-user (amount=0, same product as parent)
+  await prisma.purchase.updateMany({
+    where: {
+      userId: subUser.id,
+      status: "active",
+      product: { paymentModel: "recurring" },
+    },
+    data: { status: "cancelled", cancelledAt: new Date() },
+  });
+  const subPurchase = await prisma.purchase.create({
+    data: {
+      userId: subUser.id,
+      productId: seededProducts["starter"],
+      amount: 0,
+      currency: "USD",
+      status: "active",
+    },
+  });
+  console.log(
+    "Inherited subscription assigned: Demo Sub-User -> Starter (via parent)",
+  );
+
+  // Grant inherited membership to sub-user
+  await prisma.membership.deleteMany({
+    where: { userId: subUser.id, type: "purchase" },
+  });
+  await prisma.membership.create({
+    data: {
+      userId: subUser.id,
+      type: "purchase",
+      sourceId: subPurchase.id,
+      featureKeys: starterProduct.accessKeys,
+      status: "active",
+    },
+  });
+  console.log(
+    "Membership granted: Demo Sub-User -> Starter features (inherited)",
+  );
 }
 
 main()

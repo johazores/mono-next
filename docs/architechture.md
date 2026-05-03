@@ -74,8 +74,8 @@ app-api/
 - **Dual cookie-based sessions**: Separate `admin_session` (7d) and `user_session` (14d) cookies
 - **Secure admin URLs**: Admin auth endpoints served from `/api/panel/*` (non-predictable path)
 - **Product and purchase management**: Products stored in DB with type (physical, digital, membership) and payment model (one-time, recurring). Users linked via Purchase model with full history. Recurring purchases serve as subscriptions.
-- **User hierarchy**: Users can create sub-users (one level only). Sub-users inherit the parent's plan features but cannot create their own sub-users. The `parentId` and `ancestors` fields on the User model track the relationship.
-- **Membership-based access**: Purchases grant feature access via Membership records. Feature checks resolve direct membership keys and inherited parent features.
+- **User hierarchy**: Users can create sub-users. Sub-users inherit the parent's plan features. If a sub-user independently purchases a subscription that includes `sub-users.create` and allows sub-users (`maxSubUsers != 0`), they can create their own sub-users. Revoking a sub-user cancels their inherited purchase and membership, then detaches them (clears `parentId`/`ancestors`), so the account remains active and independent. The `parentId` and `ancestors` fields on the User model track the relationship.
+- **Membership-based access**: Purchases grant feature access via Membership records. Feature checks resolve direct membership keys first, then inherited parent features. `getEnabledFeatures()` correctly marks a sub-user's own memberships as `"direct"` and parent-inherited ones as `"inherited"`.
 - **Feature flags**: Feature definitions stored in DB with in-memory cache. `featureService.checkAccess()` checks direct and inherited sources.
 - **Prisma singleton**: `globalThis` caching prevents connection leaks during hot reload
 
@@ -121,7 +121,7 @@ app-client/
 │   │   ├── dashboard/ <- User dashboard
 │   │   ├── account/   <- Profile edit, password change, active plan info
 │   │   ├── features/  <- View enabled features by source
-│   │   ├── sub-users/ <- Manage sub-users (hidden for sub-user accounts)
+│   │   ├── sub-users/ <- Manage sub-users (requires sub-users.create feature)
 │   │   └── purchases/ <- Purchase history
 │   └── (public)/      <- Public pages
 │       ├── layout.tsx <- Minimal layout
@@ -133,10 +133,18 @@ app-client/
 │   ├── layout/        <- App shells (AdminShell with sidebar nav + logout)
 │   └── admin/         <- Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer)
 ├── hooks/             <- Custom React hooks (useAdminResource)
-├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, activity-log-service)
+├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, feature-service, sub-user-service, purchase-service, report-service, activity-log-service)
 └── types/             <- Shared type definitions (barrel-exported via index.ts)
     ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
-    └── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection
+    ├── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection
+    ├── auth.ts        <- AuthUser, UpdateAdminProfileInput
+    ├── user.ts        <- AppUser, UpdateUserProfileInput
+    ├── sub-user.ts    <- SubUser, CreateSubUserInput
+    ├── feature.ts     <- FeatureFlag (key, description, category, enabled, source)
+    ├── product.ts     <- Product
+    ├── purchase.ts    <- Purchase
+    ├── report.ts      <- AdminReport, ReportPeriod, ProductBreakdown, SubscriptionBreakdown
+    └── activity-log.ts <- ActivityLogEntry, ActivityLogList
 ```
 
 ### Key Patterns

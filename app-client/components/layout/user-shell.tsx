@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { userAuthService, type AppUser } from "@/services/user-auth-service";
+import { userAuthService } from "@/services/user-auth-service";
+import type { AppUser } from "@/types";
 
 type NavItem = {
   label: string;
@@ -28,10 +29,7 @@ export function UserShell({
   const pathname = usePathname();
   const router = useRouter();
 
-  // Sub-users don't see the Sub-Users nav link
-  const navigation = user.parentId
-    ? baseNavigation.filter((item) => item.href !== "/sub-users")
-    : baseNavigation;
+  const navigation = baseNavigation;
 
   async function handleLogout() {
     await userAuthService.logout();

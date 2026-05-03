@@ -74,15 +74,15 @@ export async function subUserItemController(
 
   if (req.method === "DELETE") {
     try {
-      const deleted = await userService.deleteSubUser(session.user.id, id);
-      await logActivity(req, "sub-user.delete", {
+      const revoked = await userService.revokeSubUser(session.user.id, id);
+      await logActivity(req, "sub-user.revoke", {
         actor: "user",
         actorId: session.user.id,
         actorEmail: session.user.email,
         resource: "user",
         resourceId: id,
       });
-      return sendOk(res, deleted);
+      return sendOk(res, revoked);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Request failed.";
       return sendError(res, message, 400);

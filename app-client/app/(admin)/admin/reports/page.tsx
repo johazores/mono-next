@@ -1,37 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiGet } from "@/services/api-client";
-
-type ProductBreakdown = {
-  productId: string;
-  productName: string;
-  count: number;
-  revenue: number;
-};
-type SubscriptionBreakdown = {
-  productId: string;
-  productName: string;
-  count: number;
-};
-type AdminReport = {
-  revenue: { totalRevenue: number; totalTransactions: number };
-  subscriptions: {
-    activeSubscriptions: number;
-    totalSubscriptions: number;
-    byProduct: SubscriptionBreakdown[];
-  };
-  purchases: {
-    totalPurchases: number;
-    byStatus: Record<string, number>;
-    byProduct: ProductBreakdown[];
-  };
-  users: {
-    totalUsers: number;
-    activeSubscribers: number;
-    newUsersLast30Days: number;
-  };
-};
+import { reportService } from "@/services/report-service";
+import type { AdminReport, ReportPeriod } from "@/types";
 
 const periods = [
   { value: "7d", label: "Last 7 days" },
@@ -50,17 +21,15 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function ReportsPage() {
-  const [period, setPeriod] = useState("30d");
+  const [period, setPeriod] = useState<ReportPeriod>("30d");
   const [report, setReport] = useState<AdminReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiGet<AdminReport>(
-        `/api/admins/reports?period=${period}`,
-      );
-      if (res.ok && res.data) setReport(res.data);
+      const data = await reportService.get(period);
+      setReport(data);
     } catch {
       // silent
     } finally {
@@ -83,7 +52,7 @@ export default function ReportsPage() {
         </div>
         <select
           value={period}
-          onChange={(e) => setPeriod(e.target.value)}
+          onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
         >
           {periods.map((p) => (

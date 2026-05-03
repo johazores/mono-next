@@ -98,7 +98,7 @@ export const featureService = {
           description: def.description,
           category: def.category,
           enabled: true,
-          source: isSubUser ? "inherited" : "direct",
+          source: "direct",
         });
       } else if (parentKeys.has(def.key)) {
         results.push({

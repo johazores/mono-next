@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getMyFeatures, type FeatureFlag } from "@/services/feature-service";
+import { getMyFeatures } from "@/services/feature-service";
+import type { FeatureFlag } from "@/types";
 
 type FeaturesState = {
   features: FeatureFlag[];

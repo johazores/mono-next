@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { authService, type AuthUser } from "@/services/auth-service";
+import { authService } from "@/services/auth-service";
+import type { AuthUser } from "@/types";
 
 type NavItem = {
   label: string;

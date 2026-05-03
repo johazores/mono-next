@@ -21,7 +21,7 @@ export type ActivityAction =
   | "purchase.create"
   | "subscription.cancel"
   | "sub-user.create"
-  | "sub-user.delete"
+  | "sub-user.revoke"
   | "membership.grant"
   | "membership.revoke"
   | "feature.create"

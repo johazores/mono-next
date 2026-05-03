@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  userAuthService,
-  type AppUser,
-  type UpdateUserProfileInput,
-} from "@/services/user-auth-service";
+import { userAuthService } from "@/services/user-auth-service";
+import type { AppUser, UpdateUserProfileInput } from "@/types";
 
 export default function AccountPage() {
   const [user, setUser] = useState<AppUser | null>(null);

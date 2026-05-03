@@ -1,25 +1,5 @@
 import { apiPost, apiGet, apiPut } from "./api-client";
-
-export type AppUser = {
-  id: string;
-  name: string;
-  email: string;
-  status: string;
-  parentId: string | null;
-  parent: { name: string; email: string } | null;
-  activePlan: {
-    name: string;
-    slug: string;
-    endDate: string | null;
-  } | null;
-};
-
-export type UpdateUserProfileInput = {
-  name?: string;
-  email?: string;
-  currentPassword?: string;
-  newPassword?: string;
-};
+import type { AppUser, UpdateUserProfileInput } from "@/types";
 
 export const userAuthService = {
   async register(name: string, email: string, password: string) {

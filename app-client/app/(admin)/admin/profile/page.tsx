@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  authService,
-  type AuthUser,
-  type UpdateAdminProfileInput,
-} from "@/services/auth-service";
+import { authService } from "@/services/auth-service";
+import type { AuthUser, UpdateAdminProfileInput } from "@/types";
 
 export default function ProfilePage() {
   const [admin, setAdmin] = useState<AuthUser | null>(null);

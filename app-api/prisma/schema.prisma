@@ -29,7 +29,7 @@ model User {
   passwordHash        String
   status              String         @default("active") // active | disabled
   parentId            String?        @db.ObjectId
-  ancestors           String[]       @db.ObjectId // materialized path: root -> ... -> direct parent
+  ancestors           String[]       @db.ObjectId // materialized path of parent IDs (e.g. [parentId])
   failedLoginAttempts Int            @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?

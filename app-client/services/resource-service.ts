@@ -24,6 +24,11 @@ async function remove(endpoint: string, id: string) {
   await apiDelete(`${endpoint}/${id}`);
 }
 
+async function fetchOptions<T = unknown>(endpoint: string): Promise<T[]> {
+  const result = await apiGet<{ items: T[] }>(endpoint);
+  return result.data?.items ?? [];
+}
+
 async function save<T = unknown>(
   endpoint: string,
   payload: Record<string, unknown>,
@@ -38,5 +43,6 @@ export const resourceService = {
   create,
   update,
   remove,
+  fetchOptions,
   save,
 };

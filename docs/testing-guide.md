@@ -62,7 +62,7 @@ NEXT_PUBLIC_API_URL="http://localhost:7001"
 ```bash
 # From the repo root
 pnpm prisma:push   # pushes Prisma schema to MongoDB
-pnpm db:seed        # seeds products, features, admin, demo user
+pnpm db:seed        # seeds products, features, admin, demo user, sub-user
 ```
 
 Or run everything at once:
@@ -73,10 +73,11 @@ pnpm setup:api      # install + push + seed in one command
 
 ### Seeded Credentials
 
-| Role      | Email             | Password       |
-| --------- | ----------------- | -------------- |
-| **Admin** | `admin@admin.com` | `ChangeMe123!` |
-| **User**  | `user@demo.com`   | `ChangeMe123!` |
+| Role         | Email             | Password       | Notes                                |
+| ------------ | ----------------- | -------------- | ------------------------------------ |
+| **Admin**    | `admin@admin.com` | `ChangeMe123!` | Full CMS access                      |
+| **User**     | `user@demo.com`   | `ChangeMe123!` | Starter plan, parent of sub-user     |
+| **Sub-User** | `sub@demo.com`    | `ChangeMe123!` | Inherits Starter features via parent |
 
 ### Seeded Data
 
@@ -98,7 +99,7 @@ Tests use **Vitest** and mock all repositories — no database connection needed
 
 ```bash
 # From the repo root
-pnpm test            # single run (136 tests)
+pnpm test            # single run (138 tests)
 pnpm test:watch      # watch mode for development
 ```
 
@@ -117,7 +118,7 @@ pnpm test
 | `tests/lib/rate-limiter.test.ts`              | 6     | Sliding window rate limiter (allow/block/remaining)    |
 | `tests/lib/feature-registry.test.ts`          | 12    | Feature cache, definitions, enabled checks             |
 | `tests/services/admin-service.test.ts`        | 22    | Admin CRUD, login, validation, duplicate detection     |
-| `tests/services/user-service.test.ts`         | 34    | User CRUD, registration, sub-user, profile updates     |
+| `tests/services/user-service.test.ts`         | 36    | User CRUD, registration, sub-user, profile updates     |
 | `tests/services/activity-log-service.test.ts` | 4     | Activity log creation, listing, error handling         |
 | `tests/services/product-service.test.ts`      | 18    | Product CRUD, slug uniqueness, access key validation   |
 | `tests/services/purchase-service.test.ts`     | 10    | Purchase creation, ownership checks, subscriptions     |
@@ -135,14 +136,15 @@ pnpm test
 - `delete` — prevents deleting last admin, allows delete when others exist, throws on non-existent admin
 - `updateProfile` — updates name, rejects short names, requires current password for password change, rejects incorrect current password, changes password, throws when no fields
 
-**User Service (34 tests):**
+**User Service (36 tests):**
 
 - `authenticate` — successful login, empty credentials, wrong password, non-existent email (timing-safe), disabled account
 - `register` — validates required fields, creates user and assigns free product
 - `update` — rejects invalid status, updates with valid input, throws on non-existent user
 - `delete` — throws on non-existent user, deletes and strips password hash
 - `updateProfile` — updates name, checks email uniqueness, allows same email, requires current password, rejects incorrect password, throws when no fields, rejects short names
-- `createSubUser` — creates sub-user when product allows, validates limits, checks parent subscription, blocks nested sub-users
+- `createSubUser` — creates sub-user when product allows, validates limits, checks parent subscription, blocks unpromoted sub-users, allows promoted sub-users with own qualifying subscription
+- `revokeSubUser` — cancels inherited purchase, revokes inherited membership, detaches sub-user from parent, validates ownership, prevents orphaning children
 - `enrichWithPlan` — returns active plan info from recurring purchase
 
 **Password Lib (8 tests):**
@@ -169,11 +171,11 @@ pnpm test
  ✓ tests/services/membership-service.test.ts (6 tests)
  ✓ tests/services/feature-service.test.ts (11 tests)
  ✓ tests/services/report-service.test.ts (5 tests)
- ✓ tests/services/user-service.test.ts (34 tests)
+ ✓ tests/services/user-service.test.ts (36 tests)
  ✓ tests/services/admin-service.test.ts (22 tests)
 
  Test Files  11 passed (11)
-      Tests  136 passed (136)
+      Tests  138 passed (138)
 ```
 
 > Tests also run automatically before every build via the `prebuild` hook. If any test fails, the build is blocked.
@@ -430,15 +432,17 @@ If your subscription includes the `sub-users.create` feature:
 1. Click **Sub-Users** in the sidebar
 2. You see a table of your current sub-users (name, email, status)
 3. Click **Create Sub-User** to open the creation form — fill in name, email, and password
-4. Use the **Delete** button on any row to remove a sub-user
+4. Use the **Revoke** button on any row to revoke a sub-user
 
-Sub-users inherit your subscription's features. The limit depends on your product (Starter: 3, Pro: 10, Enterprise: unlimited). Free tier cannot create sub-users.
+Revoking a sub-user cancels their inherited purchase and membership from your subscription, then detaches them from the parent account (clears `parentId`/`ancestors`). The account remains active and independent, keeping any purchases they made on their own. Sub-users inherit your subscription's features. The limit depends on your product (Starter: 3, Pro: 10, Enterprise: unlimited). Free tier cannot create sub-users.
+
+If a sub-user independently purchases a subscription that includes `sub-users.create` and allows sub-users, they gain the ability to create their own sub-users.
 
 **API alternative:**
 
 - `GET /api/users/auth/sub-users` — list
 - `POST /api/users/auth/sub-users` — create (body: `{ "name": "...", "email": "...", "password": "..." }`)
-- `DELETE /api/users/auth/sub-users/{id}` — delete
+- `DELETE /api/users/auth/sub-users/{id}` — revoke
 
 #### Purchases
 
@@ -492,7 +496,7 @@ Sub-users inherit your subscription's features. The limit depends on your produc
 3. Click **Create Sub-User** — fill in name, email (`sub1@test.com`), password (`SubPass123!`) and submit
 4. Create 2 more sub-users — all should succeed, and the table shows all 3
 5. Try creating a 4th — should fail with a sub-user limit error message
-6. Delete a sub-user using the **Delete** button to verify removal works
+6. Revoke a sub-user using the **Revoke** button to verify revocation works
 
 #### Scenario 4: User buys a product and gains features
 
