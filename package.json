@@ -19,7 +19,10 @@
     "build:server": "npx pnpm --prefix app-api build",
     "build": "npx pnpm run build:server && npx pnpm run build:client",
     "test": "npx pnpm --prefix app-api test",
-    "test:watch": "npx pnpm --prefix app-api test:watch"
+    "test:watch": "npx pnpm --prefix app-api test:watch",
+    "prisma:push": "npx pnpm --prefix app-api prisma:push",
+    "db:seed": "npx pnpm --prefix app-api db:seed",
+    "setup:api": "npx pnpm --prefix app-api setup"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",

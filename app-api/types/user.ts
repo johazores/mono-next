@@ -1,25 +1,26 @@
 import type { AccountStatus } from "./auth";
 
-export type SubscriptionPlan = "free" | "starter" | "pro" | "enterprise";
-
 export type UserRecord = {
   id: string;
   email: string;
   name: string;
   status: AccountStatus;
-  plan: SubscriptionPlan;
-  subscriptionId: string | null;
-  subscriptionEnds: Date | null;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  activePlan?: {
+    id: string;
+    name: string;
+    slug: string;
+    subscriptionId: string;
+    endDate: Date | null;
+  } | null;
 };
 
 export type CreateUserInput = {
   name: string;
   email: string;
   password: string;
-  plan?: SubscriptionPlan;
 };
 
 export type UpdateUserInput = {
@@ -27,9 +28,6 @@ export type UpdateUserInput = {
   email?: string;
   password?: string;
   status?: AccountStatus;
-  plan?: SubscriptionPlan;
-  subscriptionId?: string;
-  subscriptionEnds?: string;
 };
 
 export type UpdateUserProfileInput = {
@@ -45,7 +43,10 @@ export type UserAuthSession = {
     name: string;
     email: string;
     status: AccountStatus;
-    plan: SubscriptionPlan;
-    subscriptionEnds: Date | null;
+    activePlan: {
+      name: string;
+      slug: string;
+      endDate: Date | null;
+    } | null;
   };
 };

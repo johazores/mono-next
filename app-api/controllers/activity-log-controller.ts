@@ -31,6 +31,8 @@ export async function activityLogCollectionController(
   if (req.query.actorId) filter.actorId = String(req.query.actorId);
   if (req.query.action) filter.action = req.query.action as ActivityAction;
   if (req.query.resource) filter.resource = String(req.query.resource);
+  if (req.query.from) filter.from = String(req.query.from);
+  if (req.query.to) filter.to = String(req.query.to);
 
   const result = await activityLogService.list(filter);
   sendOk(res, result);

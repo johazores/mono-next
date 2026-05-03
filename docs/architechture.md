@@ -40,10 +40,12 @@ app-api/
 ├── types/             <- Shared type definitions (barrel-exported via index.ts)
 │   ├── auth.ts        <- Role, AccountStatus, AuthUser, AuthSession (admin auth)
 │   ├── admin.ts       <- AdminRecord, CreateAdminInput, UpdateAdminInput, UpdateAdminProfileInput
-│   ├── user.ts        <- UserRecord, UserAuthSession, SubscriptionPlan, UpdateUserProfileInput
+│   ├── user.ts        <- UserRecord, UserAuthSession, UpdateUserProfileInput
+│   ├── plan.ts        <- PlanRecord, CreatePlanInput, UpdatePlanInput
+│   ├── subscription.ts <- SubscriptionStatus, SubscriptionRecord
 │   ├── activity-log.ts <- ActivityAction, ActivityActor, ActivityLogRecord, ActivityLogFilter
 │   └── response.ts    <- ApiResponse<T>, ListResponse<T>
-├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger)
+├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf, request-utils)
 └── prisma/            <- Schema + seed scripts
 ```
 
@@ -60,13 +62,15 @@ app-api/
 
 - **Uniform response envelope**: All responses use `{ ok: true, data }` or `{ ok: false, error }`
 - **Singleton pattern**: Repository/service objects exported as plain object literals (not classes)
-- **Password security**: PBKDF2 with 120k iterations, SHA-512, 64-byte key, timing-safe comparison
+- **Password security**: PBKDF2 with 120k iterations, SHA-512, 64-byte key, timing-safe comparison. Requires uppercase, lowercase, and digit. Uses dummy hash for non-existent accounts to prevent timing attacks.
 - **Auth guard**: `requireAdmin()` for admin routes, `requireUser()` for user routes
+- **CSRF protection**: Origin/Referer validation on all state-changing requests (POST/PUT/DELETE) via `verifyCsrf()`
+- **Security headers**: X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy
 - **Rate limiting**: In-memory sliding window limiter per IP (admin login: 5/15min, user login: 10/15min)
-- **Activity logging**: Fire-and-forget audit trail via `logActivity()` — never breaks main request
-- **Dual cookie-based sessions**: Separate `admin_session` (7d) and `user_session` (30d) cookies
+- **Activity logging**: Fire-and-forget audit trail via `logActivity()` — captures IP, user agent, HTTP method, request path
+- **Dual cookie-based sessions**: Separate `admin_session` (7d) and `user_session` (14d) cookies
 - **Secure admin URLs**: Admin auth endpoints served from `/api/panel/*` (non-predictable path)
-- **Subscription model**: Users have plan (free/starter/pro/enterprise), subscriptionId, subscriptionEnds
+- **Dynamic subscription plans**: Plans stored in DB, managed via admin API. Users linked via Subscription model with full history.
 - **Prisma singleton**: `globalThis` caching prevents connection leaks during hot reload
 
 ### Database
@@ -74,11 +78,13 @@ app-api/
 - **Provider**: MongoDB (via Prisma)
 - **IDs**: Auto-generated ObjectId mapped to `_id`
 - **Collections**:
-  - `Admin` — CMS admin accounts (name, email, passwordHash, role, status)
+  - `Admin` — CMS admin accounts (name, email, passwordHash, role, status, failedLoginAttempts, lockedUntil)
   - `AdminSession` — Admin auth sessions (adminId, tokenHash, expiresAt)
-  - `User` — Application users (name, email, passwordHash, plan, subscription)
+  - `User` — Application users (name, email, passwordHash, status, failedLoginAttempts, lockedUntil)
   - `UserSession` — User auth sessions (userId, tokenHash, expiresAt)
-  - `ActivityLog` — Audit trail (actor, actorId, actorEmail, action, resource, resourceId, metadata, ip)
+  - `Plan` — Subscription plans (name, slug, description, price, currency, interval, features, isActive, sortOrder)
+  - `Subscription` — User subscription history (userId, planId, status, externalId, startDate, endDate, cancelledAt, metadata)
+  - `ActivityLog` — Audit trail (actor, actorId, actorEmail, action, resource, resourceId, metadata, ip, userAgent, method, path)
 - **Schema location**: `app-api/prisma/schema.prisma`
 
 ---
@@ -97,12 +103,13 @@ app-client/
 │   │       ├── page.tsx   <- Dashboard (/admin)
 │   │       ├── admins/    <- Admin account management (/admin/admins)
 │   │       ├── users/     <- User management (/admin/users)
+│   │       ├── plans/     <- Subscription plan management (/admin/plans)
 │   │       ├── activity/  <- Activity log viewer (/admin/activity)
 │   │       └── profile/   <- Admin profile management (/admin/profile)
 │   ├── (user)/        <- Protected user pages (auth guard in layout)
 │   │   ├── layout.tsx <- Auth check, redirects to /user-login
 │   │   ├── dashboard/ <- User dashboard
-│   │   └── account/   <- Profile edit, password change, subscription info
+│   │   └── account/   <- Profile edit, password change, active plan info
 │   └── (public)/      <- Public pages
 │       ├── layout.tsx <- Minimal layout
 │       ├── login/     <- Admin login form
@@ -156,14 +163,16 @@ fetch(`${NEXT_PUBLIC_API_URL}/api/admins`, { credentials: "include" })
 | `pnpm dev:server` | API only (port 7001)       |
 | `pnpm build`      | Build both apps            |
 | `pnpm format`     | Prettier format all source |
+| `pnpm test`       | Run all API tests          |
+| `pnpm test:watch` | Tests in watch mode        |
 
 ### API-specific
 
-| Command            | Description                      |
-| ------------------ | -------------------------------- |
-| `pnpm prisma:push` | Push schema to MongoDB           |
-| `pnpm db:seed`     | Seed default admin and demo user |
-| `pnpm setup`       | Full install + push + seed       |
+| Command            | Description                              |
+| ------------------ | ---------------------------------------- |
+| `pnpm prisma:push` | Push schema to MongoDB                   |
+| `pnpm db:seed`     | Seed admin, demo user, and default plans |
+| `pnpm setup`       | Full install + push + seed               |
 
 ---
 
@@ -217,8 +226,13 @@ NEXT_PUBLIC_API_URL=http://localhost:7001
 ## Security
 
 - Passwords hashed with PBKDF2 (120k iterations, SHA-512)
+- Password complexity: minimum 8 characters, requires uppercase, lowercase, and digit
+- Timing-safe comparison for all password checks, including dummy hash for non-existent accounts
 - `passwordHash` never returned to clients (`select` projections in repository, `safeUser()` in service)
-- Timing-safe comparison for password verification
+- CSRF protection via Origin/Referer header validation on POST/PUT/DELETE
+- Security headers: X-Frame-Options DENY, X-Content-Type-Options nosniff, strict Referrer-Policy, restrictive Permissions-Policy
 - Auth middleware on all mutating endpoints (token validation + role gating)
 - Input validation at service layer (role allowlist, email normalization, required fields)
 - Admin guard: Cannot delete/demote the last active admin user
+- Account lockout fields: `failedLoginAttempts` and `lockedUntil` on Admin and User models
+- User sessions limited to 14 days; admin sessions limited to 7 days

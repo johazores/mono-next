@@ -6,9 +6,6 @@ const safeSelect = {
   email: true,
   name: true,
   status: true,
-  plan: true,
-  subscriptionId: true,
-  subscriptionEnds: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
@@ -34,9 +31,6 @@ export const userRepository = {
   },
   findByIdWithPassword(id: string) {
     return prisma.user.findUnique({ where: { id } });
-  },
-  count() {
-    return prisma.user.count();
   },
   create(data: Prisma.UserCreateInput) {
     return prisma.user.create({ data });

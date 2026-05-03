@@ -7,7 +7,6 @@ vi.mock("@/repositories/user-repository", () => ({
     findById: vi.fn(),
     findByEmailWithPassword: vi.fn(),
     findByIdWithPassword: vi.fn(),
-    count: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -15,10 +14,38 @@ vi.mock("@/repositories/user-repository", () => ({
   },
 }));
 
+vi.mock("@/repositories/subscription-repository", () => ({
+  subscriptionRepository: {
+    findByUserId: vi.fn(),
+    findActiveByUserId: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    cancelActiveByUserId: vi.fn(),
+    findExpired: vi.fn(),
+    expireBatch: vi.fn(),
+  },
+}));
+
+vi.mock("@/repositories/plan-repository", () => ({
+  planRepository: {
+    list: vi.fn(),
+    listAll: vi.fn(),
+    findById: vi.fn(),
+    findBySlug: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    countActiveSubscriptions: vi.fn(),
+  },
+}));
+
 import { userService } from "@/services/user-service";
 import { userRepository } from "@/repositories/user-repository";
+import { subscriptionRepository } from "@/repositories/subscription-repository";
+import { planRepository } from "@/repositories/plan-repository";
 
 const repo = vi.mocked(userRepository);
+const subRepo = vi.mocked(subscriptionRepository);
+const planRepo = vi.mocked(planRepository);
 
 const now = new Date();
 
@@ -29,9 +56,6 @@ function fakeUser(overrides = {}) {
     email: "user@test.com",
     passwordHash: hashPassword("CorrectPass1!"),
     status: "active",
-    plan: "starter",
-    subscriptionId: null,
-    subscriptionEnds: null,
     lastLoginAt: null,
     createdAt: now,
     updatedAt: now,
@@ -41,6 +65,8 @@ function fakeUser(overrides = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: no active subscription
+  subRepo.findActiveByUserId.mockResolvedValue(null as never);
 });
 
 describe("userService.authenticate", () => {
@@ -66,7 +92,14 @@ describe("userService.authenticate", () => {
   it("throws on wrong password", async () => {
     repo.findByEmailWithPassword.mockResolvedValue(fakeUser() as never);
     await expect(
-      userService.authenticate("user@test.com", "WrongPassword!"),
+      userService.authenticate("user@test.com", "WrongPassword1!"),
+    ).rejects.toThrow("Invalid email or password.");
+  });
+
+  it("throws on non-existent email (timing-safe)", async () => {
+    repo.findByEmailWithPassword.mockResolvedValue(null as never);
+    await expect(
+      userService.authenticate("nobody@test.com", "Whatever1!"),
     ).rejects.toThrow("Invalid email or password.");
   });
 
@@ -91,29 +124,18 @@ describe("userService.register", () => {
     ).rejects.toThrow("Name, email, and password are required.");
   });
 
-  it("defaults to free plan for invalid plan", async () => {
-    repo.create.mockResolvedValue(fakeUser({ plan: "free" }) as never);
-
-    await userService.register({
-      name: "Test",
-      email: "new@test.com",
-      password: "ValidPass1!",
-      plan: "nonexistent" as never,
-    });
-
-    expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ plan: "free" }),
-    );
-  });
-
-  it("creates user with valid plan", async () => {
+  it("creates user and assigns free plan", async () => {
     repo.create.mockResolvedValue(fakeUser() as never);
+    planRepo.findBySlug.mockResolvedValue({
+      id: "plan-free",
+      slug: "free",
+    } as never);
+    subRepo.create.mockResolvedValue({} as never);
 
     const result = await userService.register({
       name: "Test User",
       email: "USER@TEST.COM",
       password: "ValidPass1!",
-      plan: "starter",
     });
 
     expect(result).not.toHaveProperty("passwordHash");
@@ -121,9 +143,10 @@ describe("userService.register", () => {
       expect.objectContaining({
         name: "Test User",
         email: "user@test.com",
-        plan: "starter",
       }),
     );
+    expect(planRepo.findBySlug).toHaveBeenCalledWith("free");
+    expect(subRepo.create).toHaveBeenCalled();
   });
 });
 
@@ -135,19 +158,12 @@ describe("userService.update", () => {
     ).rejects.toThrow("Invalid status.");
   });
 
-  it("rejects invalid plan", async () => {
-    repo.findById.mockResolvedValue(fakeUser() as never);
-    await expect(
-      userService.update("user-1", { plan: "premium" as never }),
-    ).rejects.toThrow("Invalid plan.");
-  });
-
   it("updates user with valid input", async () => {
     repo.findById.mockResolvedValue(fakeUser() as never);
-    repo.update.mockResolvedValue(fakeUser({ plan: "pro" }) as never);
+    repo.update.mockResolvedValue(fakeUser({ status: "disabled" }) as never);
 
-    const result = await userService.update("user-1", { plan: "pro" });
-    expect(result?.plan).toBe("pro");
+    const result = await userService.update("user-1", { status: "disabled" });
+    expect(result?.status).toBe("disabled");
   });
 
   it("throws on non-existent user", async () => {

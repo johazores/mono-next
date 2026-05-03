@@ -1,20 +1,15 @@
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { hashPassword, verifyPassword, DUMMY_HASH } from "@/lib/password";
 import { userRepository } from "@/repositories/user-repository";
+import { subscriptionRepository } from "@/repositories/subscription-repository";
+import { planRepository } from "@/repositories/plan-repository";
 import type {
   UserRecord,
   CreateUserInput,
   UpdateUserInput,
   UpdateUserProfileInput,
-  SubscriptionPlan,
   AccountStatus,
 } from "@/types";
 
-const allowedPlans: SubscriptionPlan[] = [
-  "free",
-  "starter",
-  "pro",
-  "enterprise",
-];
 const allowedStatuses: AccountStatus[] = ["active", "disabled"];
 
 function cleanEmail(email: string) {
@@ -31,9 +26,38 @@ function safeUser(
   return safe as UserRecord;
 }
 
+async function enrichWithPlan(
+  user: UserRecord | null,
+): Promise<UserRecord | null> {
+  if (!user) return null;
+  const sub = await subscriptionRepository.findActiveByUserId(user.id);
+  if (sub) {
+    user.activePlan = {
+      id: sub.plan.id,
+      name: sub.plan.name,
+      slug: sub.plan.slug,
+      subscriptionId: sub.id,
+      endDate: sub.endDate,
+    };
+  } else {
+    user.activePlan = null;
+  }
+  return user;
+}
+
 export const userService = {
-  list: userRepository.list,
-  getById: userRepository.findById,
+  async list() {
+    const users = await userRepository.list();
+    const enriched = await Promise.all(
+      (users as UserRecord[]).map((u) => enrichWithPlan(u)),
+    );
+    return enriched;
+  },
+
+  async getById(id: string) {
+    const user = await userRepository.findById(id);
+    return enrichWithPlan(safeUser(user as Record<string, unknown>));
+  },
 
   async authenticate(email: string, password: string): Promise<UserRecord> {
     const cleanedEmail = cleanEmail(email);
@@ -42,9 +66,12 @@ export const userService = {
     }
 
     const user = await userRepository.findByEmailWithPassword(cleanedEmail);
-    if (!user) throw new Error("Invalid email or password.");
 
-    if (!verifyPassword(password, user.passwordHash)) {
+    // Always run password verification to prevent timing-based user enumeration
+    const hashToCheck = user?.passwordHash ?? DUMMY_HASH;
+    const passwordValid = verifyPassword(password, hashToCheck);
+
+    if (!user || !passwordValid) {
       throw new Error("Invalid email or password.");
     }
 
@@ -53,7 +80,8 @@ export const userService = {
     }
 
     await userRepository.touchLastLogin(user.id);
-    return safeUser(user)!;
+    const safe = safeUser(user)!;
+    return (await enrichWithPlan(safe))!;
   },
 
   async register(input: CreateUserInput): Promise<UserRecord | null> {
@@ -63,55 +91,51 @@ export const userService = {
       throw new Error("Name, email, and password are required.");
     }
 
-    const plan = allowedPlans.includes(input.plan as SubscriptionPlan)
-      ? (input.plan as SubscriptionPlan)
-      : "free";
-
     const user = await userRepository.create({
       name: input.name,
       email,
       passwordHash: hashPassword(input.password),
-      plan,
     });
 
-    return safeUser(user);
+    const safe = safeUser(user);
+    if (!safe) return null;
+
+    // Assign free plan subscription
+    const freePlan = await planRepository.findBySlug("free");
+    if (freePlan) {
+      await subscriptionRepository.create({
+        user: { connect: { id: safe.id } },
+        plan: { connect: { id: freePlan.id } },
+      });
+    }
+
+    return enrichWithPlan(safe);
   },
 
   async update(id: string, input: UpdateUserInput): Promise<UserRecord | null> {
     const current = await userRepository.findById(id);
     if (!current) throw new Error("User not found.");
 
-    const nextStatus = input.status || current.status;
-    const nextPlan = input.plan || current.plan;
+    const nextStatus =
+      input.status || ((current as Record<string, unknown>).status as string);
 
     if (!(allowedStatuses as string[]).includes(nextStatus))
       throw new Error("Invalid status.");
-    if (!(allowedPlans as string[]).includes(nextPlan))
-      throw new Error("Invalid plan.");
 
     const data: Record<string, unknown> = {
-      name: input.name || current.name,
-      email: input.email ? cleanEmail(input.email) : current.email,
+      name: input.name || (current as Record<string, unknown>).name,
+      email: input.email
+        ? cleanEmail(input.email)
+        : (current as Record<string, unknown>).email,
       status: nextStatus,
-      plan: nextPlan,
     };
 
     if (input.password) {
       data.passwordHash = hashPassword(input.password);
     }
 
-    if (input.subscriptionId !== undefined) {
-      data.subscriptionId = input.subscriptionId || null;
-    }
-
-    if (input.subscriptionEnds !== undefined) {
-      data.subscriptionEnds = input.subscriptionEnds
-        ? new Date(input.subscriptionEnds)
-        : null;
-    }
-
     const user = await userRepository.update(id, data);
-    return safeUser(user);
+    return enrichWithPlan(safeUser(user));
   },
 
   async delete(id: string): Promise<UserRecord | null> {
@@ -159,6 +183,6 @@ export const userService = {
     if (Object.keys(data).length === 0) throw new Error("No fields to update.");
 
     const user = await userRepository.update(id, data);
-    return safeUser(user);
+    return enrichWithPlan(safeUser(user));
   },
 };

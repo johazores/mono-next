@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { sendError, sendOk } from "@/lib/api-response";
 import { adminService } from "@/services/admin-service";
 import { logActivity } from "@/lib/activity-logger";
+import { verifyCsrf } from "@/lib/csrf";
 
 export async function adminCollectionController(
   req: NextApiRequest,
@@ -19,6 +20,7 @@ export async function adminCollectionController(
     if (req.method === "GET")
       return sendOk(res, { items: await adminService.list() });
     if (req.method === "POST") {
+      if (!verifyCsrf(req, res)) return;
       const admin = await adminService.create(req.body);
       await logActivity(req, "admin.create", {
         resource: "admin",
@@ -57,6 +59,7 @@ export async function adminItemController(
     }
 
     if (req.method === "PUT") {
+      if (!verifyCsrf(req, res)) return;
       const admin = await adminService.update(id, req.body);
       await logActivity(req, "admin.update", {
         resource: "admin",
@@ -67,6 +70,7 @@ export async function adminItemController(
     }
 
     if (req.method === "DELETE") {
+      if (!verifyCsrf(req, res)) return;
       const admin = await adminService.delete(id);
       await logActivity(req, "admin.delete", {
         resource: "admin",

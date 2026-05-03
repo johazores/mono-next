@@ -25,7 +25,7 @@ NEXT_PUBLIC_API_URL=http://localhost:7001
 ```
 app/
   page.tsx           Public landing page with navigation links
-  (admin)/admin/     Protected admin pages (dashboard, users, admins, activity, profile)
+  (admin)/admin/     Protected admin pages (dashboard, users, admins, plans, activity, profile)
   (user)/            Protected user pages (dashboard, account)
   (public)/          Public pages (login, user-login, user-register)
 components/
@@ -50,20 +50,21 @@ All API requests include `credentials: "include"` for cookie passthrough.
 
 ### Admin Panel
 
-| Path              | Description                          |
-| ----------------- | ------------------------------------ |
-| `/admin`          | Admin dashboard (protected)          |
-| `/admin/users`    | User management (protected)          |
-| `/admin/admins`   | Admin account management (protected) |
-| `/admin/activity` | Activity log viewer (protected)      |
-| `/admin/profile`  | Admin profile management (protected) |
-| `/login`          | Admin login form (public)            |
+| Path              | Description                              |
+| ----------------- | ---------------------------------------- |
+| `/admin`          | Admin dashboard (protected)              |
+| `/admin/users`    | User management (protected)              |
+| `/admin/admins`   | Admin account management (protected)     |
+| `/admin/plans`    | Subscription plan management (protected) |
+| `/admin/activity` | Activity log viewer (protected)          |
+| `/admin/profile`  | Admin profile management (protected)     |
+| `/login`          | Admin login form (public)                |
 
 ### User Dashboard
 
-| Path             | Description                                 |
-| ---------------- | ------------------------------------------- |
-| `/dashboard`     | User dashboard (protected)                  |
-| `/account`       | Profile edit, password change, subscription |
-| `/user-login`    | User login form (public)                    |
-| `/user-register` | User registration form (public)             |
+| Path             | Description                                |
+| ---------------- | ------------------------------------------ |
+| `/dashboard`     | User dashboard (protected)                 |
+| `/account`       | Profile edit, password change, active plan |
+| `/user-login`    | User login form (public)                   |
+| `/user-register` | User registration form (public)            |

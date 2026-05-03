@@ -18,14 +18,6 @@ const userFields: ResourceField[] = [
     type: "select",
     options: ["active", "disabled"],
   },
-  {
-    name: "plan",
-    label: "Plan",
-    type: "select",
-    options: ["free", "starter", "pro", "enterprise"],
-  },
-  { name: "subscriptionId", label: "Subscription ID", type: "text" },
-  { name: "subscriptionEnds", label: "Subscription Ends", type: "text" },
 ];
 
 const emptyUser: ResourceItem = {
@@ -33,9 +25,6 @@ const emptyUser: ResourceItem = {
   email: "",
   password: "",
   status: "active",
-  plan: "free",
-  subscriptionId: "",
-  subscriptionEnds: "",
 };
 
 export default function UsersPage() {
@@ -45,7 +34,7 @@ export default function UsersPage() {
       endpoint="/api/users"
       fields={userFields}
       getTitle={(item) => String(item.name || item.email)}
-      getSubtitle={(item) => `${item.plan} · ${item.email}`}
+      getSubtitle={(item) => `${item.email}`}
       emptyItem={emptyUser}
     />
   );

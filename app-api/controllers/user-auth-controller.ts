@@ -8,12 +8,8 @@ import {
 import { userService } from "@/services/user-service";
 import { checkRateLimit, USER_LOGIN_LIMIT } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
-
-function getIp(req: NextApiRequest): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
-  return req.socket?.remoteAddress ?? "unknown";
-}
+import { verifyCsrf } from "@/lib/csrf";
+import { getClientIp } from "@/lib/request-utils";
 
 export async function userLoginController(
   req: NextApiRequest,
@@ -28,7 +24,9 @@ export async function userLoginController(
     return;
   }
 
-  const ip = getIp(req);
+  if (!verifyCsrf(req, res)) return;
+
+  const ip = getClientIp(req);
   const limit = checkRateLimit(ip, "user.login", USER_LOGIN_LIMIT);
   if (!limit.allowed) {
     res.setHeader(
@@ -84,6 +82,8 @@ export async function userRegisterController(
     return;
   }
 
+  if (!verifyCsrf(req, res)) return;
+
   try {
     const user = await userService.register(req.body);
     if (!user) {
@@ -117,6 +117,8 @@ export async function userLogoutController(
     sendError(res, "Method not allowed.", 405);
     return;
   }
+
+  if (!verifyCsrf(req, res)) return;
 
   await logActivity(req, "user.logout", { resource: "user" });
   await clearUserSession(req, res);

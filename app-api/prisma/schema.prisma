@@ -8,31 +8,33 @@ datasource db {
 }
 
 model Admin {
-  id           String         @id @default(auto()) @map("_id") @db.ObjectId
-  name         String
-  email        String         @unique
-  passwordHash String
-  role         String         @default("editor") // admin | editor
-  status       String         @default("active") // active | disabled
-  lastLoginAt  DateTime?
-  sessions     AdminSession[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id                  String         @id @default(auto()) @map("_id") @db.ObjectId
+  name                String
+  email               String         @unique
+  passwordHash        String
+  role                String         @default("editor") // admin | editor
+  status              String         @default("active") // active | disabled
+  failedLoginAttempts Int            @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  sessions            AdminSession[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 }
 
 model User {
-  id               String        @id @default(auto()) @map("_id") @db.ObjectId
-  email            String        @unique
-  name             String
-  passwordHash     String
-  status           String        @default("active") // active | disabled
-  plan             String        @default("free") // free | starter | pro | enterprise
-  subscriptionId   String?
-  subscriptionEnds DateTime?
-  lastLoginAt      DateTime?
-  sessions         UserSession[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id                  String         @id @default(auto()) @map("_id") @db.ObjectId
+  email               String         @unique
+  name                String
+  passwordHash        String
+  status              String         @default("active") // active | disabled
+  failedLoginAttempts Int            @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  sessions            UserSession[]
+  subscriptions       Subscription[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 }
 
 model UserSession {
@@ -65,5 +67,40 @@ model ActivityLog {
   resourceId String?  @db.ObjectId
   metadata   Json?
   ip         String?
+  userAgent  String?
+  method     String? // HTTP method
+  path       String? // Request path
   createdAt  DateTime @default(now())
+}
+
+model Plan {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  slug          String         @unique
+  description   String?
+  price         Float          @default(0)
+  currency      String         @default("USD")
+  interval      String         @default("month") // month | year
+  features      String[]
+  isActive      Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  subscriptions Subscription[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Subscription {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  planId      String    @db.ObjectId
+  status      String    @default("active") // active | cancelled | expired | past_due
+  externalId  String? // External payment provider ID (e.g. Stripe)
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  cancelledAt DateTime?
+  metadata    Json?
+  user        User      @relation(fields: [userId], references: [id])
+  plan        Plan      @relation(fields: [planId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

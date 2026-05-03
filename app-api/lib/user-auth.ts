@@ -3,10 +3,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/prisma";
 import { sendError } from "@/lib/api-response";
 import { getUserSessionSecret } from "@/lib/secure-credentials";
-import type { SubscriptionPlan, AccountStatus, UserAuthSession } from "@/types";
+import type { AccountStatus, UserAuthSession } from "@/types";
 
 const COOKIE_NAME = "user_session";
-const SESSION_DAYS = 30;
+const SESSION_DAYS = 14;
 
 function hashToken(token: string) {
   return crypto
@@ -75,14 +75,26 @@ export async function getUserSession(
     return null;
   }
 
+  // Fetch active subscription with plan info
+  const activeSub = await prisma.subscription.findFirst({
+    where: { userId: session.user.id, status: "active" },
+    include: { plan: { select: { name: true, slug: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
   return {
     user: {
       id: session.user.id,
       name: session.user.name,
       email: session.user.email,
       status: session.user.status as AccountStatus,
-      plan: session.user.plan as SubscriptionPlan,
-      subscriptionEnds: session.user.subscriptionEnds,
+      activePlan: activeSub
+        ? {
+            name: activeSub.plan.name,
+            slug: activeSub.plan.slug,
+            endDate: activeSub.endDate,
+          }
+        : null,
     },
   };
 }

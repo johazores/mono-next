@@ -8,7 +8,6 @@ vi.mock("@/repositories/admin-repository", () => ({
     findById: vi.fn(),
     findByEmailWithPassword: vi.fn(),
     findByIdWithPassword: vi.fn(),
-    count: vi.fn(),
     countAdmins: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),

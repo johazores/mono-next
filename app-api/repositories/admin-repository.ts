@@ -40,9 +40,6 @@ export const adminRepository = {
   findByIdWithPassword(id: string) {
     return prisma.admin.findUnique({ where: { id } });
   },
-  count() {
-    return prisma.admin.count();
-  },
   countAdmins(exceptId?: string) {
     return prisma.admin.count({
       where: {

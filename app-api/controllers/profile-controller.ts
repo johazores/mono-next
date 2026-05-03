@@ -5,6 +5,7 @@ import { sendOk, sendError } from "@/lib/api-response";
 import { adminService } from "@/services/admin-service";
 import { userService } from "@/services/user-service";
 import { logActivity } from "@/lib/activity-logger";
+import { verifyCsrf } from "@/lib/csrf";
 
 export async function adminProfileController(
   req: NextApiRequest,
@@ -29,6 +30,7 @@ export async function adminProfileController(
   }
 
   if (req.method === "PUT") {
+    if (!verifyCsrf(req, res)) return;
     try {
       const admin = await adminService.updateProfile(
         session.admin.id,
@@ -78,6 +80,7 @@ export async function userProfileController(
   }
 
   if (req.method === "PUT") {
+    if (!verifyCsrf(req, res)) return;
     try {
       const user = await userService.updateProfile(session.user.id, req.body);
       await logActivity(req, "profile.update", {

@@ -4,10 +4,35 @@ const iterations = 120000;
 const keyLength = 64;
 const digest = "sha512";
 
-export function hashPassword(password: string) {
+// Pre-computed hash used to prevent timing attacks when a user is not found.
+// verifyPassword is always called so the response time is constant regardless
+// of whether the account exists.
+export const DUMMY_HASH = [
+  "pbkdf2",
+  String(iterations),
+  "0".repeat(32),
+  "0".repeat(128),
+].join("$");
+
+export function validatePasswordStrength(password: string): string | null {
   if (!password || password.length < 8) {
-    throw new Error("Password must be at least 8 characters.");
+    return "Password must be at least 8 characters.";
   }
+  if (!/[a-z]/.test(password)) {
+    return "Password must contain at least one lowercase letter.";
+  }
+  if (!/[A-Z]/.test(password)) {
+    return "Password must contain at least one uppercase letter.";
+  }
+  if (!/[0-9]/.test(password)) {
+    return "Password must contain at least one digit.";
+  }
+  return null;
+}
+
+export function hashPassword(password: string) {
+  const error = validatePasswordStrength(password);
+  if (error) throw new Error(error);
 
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto

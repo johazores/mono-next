@@ -8,12 +8,8 @@ import {
 import { adminService } from "@/services/admin-service";
 import { checkRateLimit, ADMIN_LOGIN_LIMIT } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
-
-function getIp(req: NextApiRequest): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
-  return req.socket?.remoteAddress ?? "unknown";
-}
+import { verifyCsrf } from "@/lib/csrf";
+import { getClientIp } from "@/lib/request-utils";
 
 export async function loginController(
   req: NextApiRequest,
@@ -28,7 +24,9 @@ export async function loginController(
     return;
   }
 
-  const ip = getIp(req);
+  if (!verifyCsrf(req, res)) return;
+
+  const ip = getClientIp(req);
   const limit = checkRateLimit(ip, "admin.login", ADMIN_LOGIN_LIMIT);
   if (!limit.allowed) {
     res.setHeader(
@@ -83,6 +81,8 @@ export async function logoutController(
     sendError(res, "Method not allowed.", 405);
     return;
   }
+
+  if (!verifyCsrf(req, res)) return;
 
   await logActivity(req, "admin.logout", { resource: "admin" });
   await clearAdminSession(req, res);

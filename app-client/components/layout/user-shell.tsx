@@ -30,12 +30,7 @@ export function UserShell({
     router.replace("/user-login");
   }
 
-  const planLabel: Record<string, string> = {
-    free: "Free",
-    starter: "Starter",
-    pro: "Pro",
-    enterprise: "Enterprise",
-  };
+  const planName = user.activePlan?.name ?? "Free";
 
   return (
     <div className="flex min-h-full">
@@ -43,7 +38,7 @@ export function UserShell({
         <div className="px-4 py-6">
           <h1 className="text-lg font-bold text-gray-900 px-3">mono-next</h1>
           <span className="mt-1 inline-block rounded-full bg-blue-100 px-3 py-0.5 text-xs font-medium text-blue-700">
-            {planLabel[user.plan] ?? user.plan}
+            {planName}
           </span>
         </div>
         <nav className="flex-1 px-4">

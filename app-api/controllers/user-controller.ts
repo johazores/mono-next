@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { sendError, sendOk } from "@/lib/api-response";
 import { userService } from "@/services/user-service";
 import { logActivity } from "@/lib/activity-logger";
+import { verifyCsrf } from "@/lib/csrf";
 
 export async function userCollectionController(
   req: NextApiRequest,
@@ -19,6 +20,7 @@ export async function userCollectionController(
     if (req.method === "GET")
       return sendOk(res, { items: await userService.list() });
     if (req.method === "POST") {
+      if (!verifyCsrf(req, res)) return;
       const user = await userService.register(req.body);
       await logActivity(req, "user.create", {
         resource: "user",
@@ -57,6 +59,7 @@ export async function userItemController(
     }
 
     if (req.method === "PUT") {
+      if (!verifyCsrf(req, res)) return;
       const user = await userService.update(id, req.body);
       await logActivity(req, "user.update", {
         resource: "user",
@@ -67,6 +70,7 @@ export async function userItemController(
     }
 
     if (req.method === "DELETE") {
+      if (!verifyCsrf(req, res)) return;
       const user = await userService.delete(id);
       await logActivity(req, "user.delete", {
         resource: "user",

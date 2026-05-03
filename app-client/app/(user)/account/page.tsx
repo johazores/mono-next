@@ -7,13 +7,6 @@ import {
   type UpdateUserProfileInput,
 } from "@/services/user-auth-service";
 
-const planLabel: Record<string, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  enterprise: "Enterprise",
-};
-
 export default function AccountPage() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [name, setName] = useState("");
@@ -211,15 +204,15 @@ export default function AccountPage() {
             <dt className="text-sm font-medium text-gray-500">Current Plan</dt>
             <dd className="mt-1">
               <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                {planLabel[user.plan] ?? user.plan}
+                {user.activePlan?.name ?? "Free"}
               </span>
             </dd>
           </div>
           <div>
             <dt className="text-sm font-medium text-gray-500">Renews</dt>
             <dd className="mt-1 text-sm text-gray-900">
-              {user.subscriptionEnds
-                ? new Date(user.subscriptionEnds).toLocaleDateString()
+              {user.activePlan?.endDate
+                ? new Date(user.activePlan.endDate).toLocaleDateString()
                 : "N/A"}
             </dd>
           </div>

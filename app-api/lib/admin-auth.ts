@@ -5,8 +5,6 @@ import { sendError } from "@/lib/api-response";
 import { getSessionSecret } from "@/lib/secure-credentials";
 import type { Role, AccountStatus, AuthSession } from "@/types";
 
-export type { AuthUser, AuthSession } from "@/types";
-
 const COOKIE_NAME = "admin_session";
 const SESSION_DAYS = 7;
 

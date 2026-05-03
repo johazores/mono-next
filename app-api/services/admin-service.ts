@@ -1,4 +1,4 @@
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { hashPassword, verifyPassword, DUMMY_HASH } from "@/lib/password";
 import { adminRepository } from "@/repositories/admin-repository";
 import type {
   AdminRecord,
@@ -36,9 +36,12 @@ export const adminService = {
     }
 
     const admin = await adminRepository.findByEmailWithPassword(cleanedEmail);
-    if (!admin) throw new Error("Invalid email or password.");
 
-    if (!verifyPassword(password, admin.passwordHash)) {
+    // Always run password verification to prevent timing-based user enumeration
+    const hashToCheck = admin?.passwordHash ?? DUMMY_HASH;
+    const passwordValid = verifyPassword(password, hashToCheck);
+
+    if (!admin || !passwordValid) {
       throw new Error("Invalid email or password.");
     }
 

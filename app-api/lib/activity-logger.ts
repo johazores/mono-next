@@ -2,12 +2,12 @@ import type { NextApiRequest } from "next";
 import { getAuthSession } from "@/lib/admin-auth";
 import { getUserSession } from "@/lib/user-auth";
 import { activityLogService } from "@/services/activity-log-service";
+import { getClientIp } from "@/lib/request-utils";
 import type { ActivityAction, ActivityActor } from "@/types";
 
-function getClientIp(req: NextApiRequest): string | undefined {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
-  return req.socket?.remoteAddress ?? undefined;
+function getUserAgent(req: NextApiRequest): string | undefined {
+  const ua = req.headers["user-agent"];
+  return typeof ua === "string" ? ua.slice(0, 512) : undefined;
 }
 
 export async function logActivity(
@@ -52,5 +52,8 @@ export async function logActivity(
     resourceId: details?.resourceId,
     metadata: details?.metadata,
     ip: getClientIp(req),
+    userAgent: getUserAgent(req),
+    method: req.method,
+    path: req.url,
   });
 }

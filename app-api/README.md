@@ -32,20 +32,22 @@ controllers/       HTTP layer (auth, method routing, responses)
 services/          Business logic and validation
 repositories/      Data access (Prisma queries)
 types/             Shared type definitions (barrel-exported via index.ts)
-lib/               Utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger)
+lib/               Utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf)
 prisma/            Schema and seed scripts
 tests/             Unit tests (Vitest) — mirrors source structure
 ```
 
 ## Database Collections
 
-| Collection     | Purpose                                                       |
-| -------------- | ------------------------------------------------------------- |
-| `Admin`        | CMS admin accounts (name, email, password, role)              |
-| `AdminSession` | Admin cookie-based auth sessions (hashed token, expiry)       |
-| `User`         | Application users (name, email, password, plan, subscription) |
-| `UserSession`  | User cookie-based auth sessions (hashed token, expiry)        |
-| `ActivityLog`  | Centralized action audit trail (actor, action, resource, IP)  |
+| Collection     | Purpose                                                         |
+| -------------- | --------------------------------------------------------------- |
+| `Admin`        | CMS admin accounts (name, email, password, role, lockout state) |
+| `AdminSession` | Admin cookie-based auth sessions (hashed token, expiry)         |
+| `User`         | Application users (name, email, password, lockout state)        |
+| `UserSession`  | User cookie-based auth sessions (hashed token, expiry)          |
+| `Plan`         | Subscription plans (name, slug, price, interval, features)      |
+| `Subscription` | User subscription history (status, dates, plan relation)        |
+| `ActivityLog`  | Centralized audit trail (actor, action, resource, IP, UA)       |
 
 ## Available Endpoints
 
@@ -100,13 +102,37 @@ tests/             Unit tests (Vitest) — mirrors source structure
 | PUT    | /api/users/:id | Update a user  |
 | DELETE | /api/users/:id | Delete a user  |
 
+### Plans
+
+| Method | Path           | Auth  | Description              |
+| ------ | -------------- | ----- | ------------------------ |
+| GET    | /api/plans     | None  | List active plans        |
+| POST   | /api/plans     | Admin | Create a plan            |
+| GET    | /api/plans/:id | None  | Get a plan               |
+| PUT    | /api/plans/:id | Admin | Update a plan            |
+| DELETE | /api/plans/:id | Admin | Soft-delete (deactivate) |
+
+### Subscriptions (requires admin role)
+
+| Method | Path                         | Description                       |
+| ------ | ---------------------------- | --------------------------------- |
+| GET    | /api/users/:id/subscriptions | List user subscription history    |
+| POST   | /api/users/:id/subscriptions | Assign a plan to a user           |
+| DELETE | /api/users/:id/subscriptions | Cancel user's active subscription |
+
+### Own Subscription (requires user session)
+
+| Method | Path                         | Description                           |
+| ------ | ---------------------------- | ------------------------------------- |
+| GET    | /api/users/auth/subscription | Get own active subscription & history |
+
 ### Activity Logs (requires admin role)
 
 | Method | Path               | Description                                |
 | ------ | ------------------ | ------------------------------------------ |
 | GET    | /api/activity-logs | List activity logs (paginated, filterable) |
 
-Query parameters: `page`, `limit` (max 100), `action`, `actor`, `actorId`, `resource`.
+Query parameters: `page`, `limit` (max 100), `action`, `actor`, `actorId`, `resource`, `from`, `to`.
 
 ## Testing
 
@@ -161,10 +187,30 @@ Uses HMAC-SHA256 hashed tokens stored in `AdminSession`. Sessions use
 ### User Auth (`user_session` cookie)
 
 Uses HMAC-SHA256 hashed tokens stored in `UserSession`. Sessions use
-`HttpOnly`, `SameSite=Lax` cookies with a 30-day expiry. Protected by
+`HttpOnly`, `SameSite=Lax` cookies with a 14-day expiry. Protected by
 `USER_SESSION_SECRET` (minimum 32 characters). Middleware: `requireUser()`.
 Users register with a `free` plan by default and can be upgraded via the
 admin panel.
+
+### CSRF Protection
+
+All state-changing requests (POST, PUT, DELETE) are validated against the
+`Origin` or `Referer` header to ensure requests originate from the expected
+client (`CLIENT_ORIGIN`). In development mode, requests without an origin
+header (e.g. curl, Postman) are permitted.
+
+### Password Policy
+
+Passwords must be at least 8 characters and include an uppercase letter,
+a lowercase letter, and a digit. Timing-safe comparison is used for all
+password checks, including a dummy hash when the account doesn't exist.
+
+### Security Headers
+
+All responses include: `X-Frame-Options: DENY`,
+`X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`,
+and a restrictive `Permissions-Policy`.
 
 ## Rate Limiting
 
@@ -185,25 +231,33 @@ fire-and-forget (never breaks the main request flow).
 
 ### Tracked Actions
 
-| Action               | Trigger                             |
-| -------------------- | ----------------------------------- |
-| `admin.login`        | Successful admin login              |
-| `admin.login_failed` | Failed admin login attempt          |
-| `admin.logout`       | Admin logout                        |
-| `admin.create`       | Admin account created via panel     |
-| `admin.update`       | Admin account updated via panel     |
-| `admin.delete`       | Admin account deleted via panel     |
-| `user.login`         | Successful user login               |
-| `user.login_failed`  | Failed user login attempt           |
-| `user.register`      | New user registration               |
-| `user.logout`        | User logout                         |
-| `user.create`        | User created by admin               |
-| `user.update`        | User updated by admin               |
-| `user.delete`        | User deleted by admin               |
-| `profile.update`     | Profile self-update (admin or user) |
+| Action                | Trigger                                  |
+| --------------------- | ---------------------------------------- |
+| `admin.login`         | Successful admin login                   |
+| `admin.login_failed`  | Failed admin login attempt               |
+| `admin.logout`        | Admin logout                             |
+| `admin.create`        | Admin account created via panel          |
+| `admin.update`        | Admin account updated via panel          |
+| `admin.delete`        | Admin account deleted via panel          |
+| `user.login`          | Successful user login                    |
+| `user.login_failed`   | Failed user login attempt                |
+| `user.register`       | New user registration                    |
+| `user.logout`         | User logout                              |
+| `user.create`         | User created by admin                    |
+| `user.update`         | User updated by admin                    |
+| `user.delete`         | User deleted by admin                    |
+| `profile.update`      | Profile self-update (admin or user)      |
+| `admin.locked`        | Admin account locked (too many attempts) |
+| `user.locked`         | User account locked (too many attempts)  |
+| `plan.create`         | Plan created                             |
+| `plan.update`         | Plan updated                             |
+| `plan.delete`         | Plan deactivated                         |
+| `subscription.assign` | Subscription assigned to a user          |
+| `subscription.cancel` | Subscription cancelled                   |
 
 Each log entry records: actor type, actor ID/email, action, resource,
-resource ID, optional metadata, client IP, and timestamp.
+resource ID, optional metadata, client IP, user agent, HTTP method,
+request path, and timestamp.
 
 ## Profile Management
 
@@ -221,18 +275,30 @@ resource ID, optional metadata, client IP, and timestamp.
 
 ## Subscription Plans
 
-| Plan         | Description                  |
-| ------------ | ---------------------------- |
-| `free`       | Default plan on registration |
-| `starter`    | Basic paid tier              |
-| `pro`        | Professional tier            |
-| `enterprise` | Full-featured tier           |
+Plans are stored in the `Plan` collection and managed dynamically via the
+admin panel or API. The seed script creates four default plans:
 
-Subscription fields on the User model:
+| Slug         | Price | Interval | Description                  |
+| ------------ | ----- | -------- | ---------------------------- |
+| `free`       | $0    | month    | Default plan on registration |
+| `starter`    | $9    | month    | Basic paid tier              |
+| `pro`        | $29   | month    | Professional tier            |
+| `enterprise` | $99   | month    | Full-featured tier           |
 
-- `plan` — Current subscription plan
-- `subscriptionId` — External payment provider reference
-- `subscriptionEnds` — Expiry date of the current subscription
+Each plan has a `features` array (string list), `isActive` flag, and
+`sortOrder` for display ordering.
+
+### Subscription Model
+
+Subscriptions link users to plans and track history:
+
+- `status` — `active`, `cancelled`, `expired`, or `past_due`
+- `startDate` / `endDate` — Subscription period
+- `externalId` — Optional external payment provider reference
+- `metadata` — Optional JSON for provider-specific data
+
+When a user is assigned a new plan, any existing active subscription is
+automatically cancelled. Users always have at most one active subscription.
 
 ## Default Seed
 
@@ -249,5 +315,5 @@ User:
 ```
 Email:    user@demo.com
 Password: ChangeMe123!
-Plan:     starter
+Plan:     starter (assigned via subscription)
 ```

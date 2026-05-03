@@ -5,8 +5,11 @@ export type AppUser = {
   name: string;
   email: string;
   status: string;
-  plan: string;
-  subscriptionEnds: string | null;
+  activePlan: {
+    name: string;
+    slug: string;
+    endDate: string | null;
+  } | null;
 };
 
 export type UpdateUserProfileInput = {

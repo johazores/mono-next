@@ -23,6 +23,13 @@ export const activityLogRepository = {
     if (filter.action) where.action = filter.action;
     if (filter.resource) where.resource = filter.resource;
 
+    if (filter.from || filter.to) {
+      const createdAt: Record<string, Date> = {};
+      if (filter.from) createdAt.gte = new Date(filter.from);
+      if (filter.to) createdAt.lte = new Date(filter.to);
+      where.createdAt = createdAt;
+    }
+
     return prisma.activityLog.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -37,6 +44,13 @@ export const activityLogRepository = {
     if (filter.actorId) where.actorId = filter.actorId;
     if (filter.action) where.action = filter.action;
     if (filter.resource) where.resource = filter.resource;
+
+    if (filter.from || filter.to) {
+      const createdAt: Record<string, Date> = {};
+      if (filter.from) createdAt.gte = new Date(filter.from);
+      if (filter.to) createdAt.lte = new Date(filter.to);
+      where.createdAt = createdAt;
+    }
 
     return prisma.activityLog.count({ where });
   },
