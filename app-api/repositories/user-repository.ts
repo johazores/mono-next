@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getAppEnv } from "@/lib/env";
 import type { Prisma } from "@prisma/client";
 
 const safeSelect = {
@@ -29,11 +30,15 @@ export const userRepository = {
   },
   findByEmailWithPassword(email: string) {
     return prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: {
+        env_email: { env: getAppEnv(), email: email.toLowerCase().trim() },
+      },
     });
   },
   findByClerkId(clerkId: string) {
-    return prisma.user.findUnique({ where: { clerkId } });
+    return prisma.user.findUnique({
+      where: { env_clerkId: { env: getAppEnv(), clerkId } },
+    });
   },
   findByIdWithPassword(id: string) {
     return prisma.user.findUnique({ where: { id } });

@@ -38,6 +38,7 @@ DATABASE_URL="mongodb://localhost:27017/mono-next"
 ADMIN_SESSION_SECRET="change-me-at-least-32-characters-long"
 USER_SESSION_SECRET="change-me-at-least-32-characters-long"
 NODE_ENV="development"
+APP_ENV="dev"
 ```
 
 > If using MongoDB Atlas, replace `DATABASE_URL` with your Atlas connection string.
@@ -107,7 +108,7 @@ Tests use **Vitest** and mock all repositories — no database connection needed
 
 ```bash
 # From the repo root
-pnpm test            # single run (151 tests)
+pnpm test            # single run (156 tests)
 pnpm test:watch      # watch mode for development
 ```
 
@@ -124,6 +125,7 @@ pnpm test
 | --------------------------------------------- | ----- | ------------------------------------------------------ |
 | `tests/lib/password.test.ts`                  | 8     | PBKDF2 hashing, salt uniqueness, password verification |
 | `tests/lib/rate-limiter.test.ts`              | 6     | Sliding window rate limiter (allow/block/remaining)    |
+| `tests/lib/env.test.ts`                       | 5     | APP_ENV validation, defaults, invalid values           |
 | `tests/lib/feature-registry.test.ts`          | 12    | Feature cache, definitions, enabled checks             |
 | `tests/services/admin-service.test.ts`        | 22    | Admin CRUD, login, validation, duplicate detection     |
 | `tests/services/user-service.test.ts`         | 37    | User CRUD, registration, sub-user, profile updates     |
@@ -171,6 +173,7 @@ pnpm test
 ### Expected Output
 
 ```
+ ✓ tests/lib/env.test.ts (5 tests)
  ✓ tests/lib/rate-limiter.test.ts (6 tests)
  ✓ tests/lib/feature-registry.test.ts (12 tests)
  ✓ tests/lib/password.test.ts (8 tests)
@@ -184,8 +187,8 @@ pnpm test
  ✓ tests/services/user-service.test.ts (37 tests)
  ✓ tests/services/admin-service.test.ts (22 tests)
 
- Test Files  12 passed (12)
-      Tests  151 passed (151)
+ Test Files  13 passed (13)
+      Tests  156 passed (156)
 ```
 
 > Tests also run automatically before every build via the `prebuild` hook. If any test fails, the build is blocked.
@@ -560,7 +563,7 @@ If a sub-user independently purchases a subscription that includes `sub-users.cr
 
 1. Open a terminal in the project root
 2. Run `pnpm test`
-3. All 151 tests should pass across 12 test files
+3. All 156 tests should pass across 13 test files
 4. If any test fails, check the output for the failing assertion and fix the issue before continuing
 
 ---
@@ -583,7 +586,7 @@ Users can also gain individual features by **purchasing products** or through an
 ```bash
 pnpm install          # Install everything
 pnpm setup:api        # Install + push schema + seed (first time)
-pnpm test             # Run 151 unit tests
+pnpm test             # Run 156 unit tests
 pnpm dev              # Start both apps (client:7000 + api:7001)
 pnpm build            # Production build (tests run first)
 ```

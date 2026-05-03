@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getAppEnv } from "@/lib/env";
 import type { Prisma } from "@prisma/client";
 
 export const productRepository = {
@@ -20,7 +21,9 @@ export const productRepository = {
   },
 
   findBySlug(slug: string) {
-    return prisma.product.findUnique({ where: { slug } });
+    return prisma.product.findUnique({
+      where: { env_slug: { env: getAppEnv(), slug } },
+    });
   },
 
   create(data: Prisma.ProductCreateInput) {

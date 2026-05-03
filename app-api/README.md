@@ -16,13 +16,36 @@ Runs on port **7001**.
 
 ## Environment Variables
 
-| Variable               | Description                                    |
-| ---------------------- | ---------------------------------------------- |
-| `DATABASE_URL`         | MongoDB connection string                      |
-| `ADMIN_SESSION_SECRET` | Admin session signing secret (min 32 chars)    |
-| `USER_SESSION_SECRET`  | User session signing secret (min 32 chars)     |
-| `NODE_ENV`             | `development` or `production`                  |
-| `CLIENT_ORIGIN`        | Allowed CORS origin (default `localhost:7000`) |
+| Variable               | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| `DATABASE_URL`         | MongoDB connection string                                |
+| `ADMIN_SESSION_SECRET` | Admin session signing secret (min 32 chars)              |
+| `USER_SESSION_SECRET`  | User session signing secret (min 32 chars)               |
+| `NODE_ENV`             | `development` or `production`                            |
+| `APP_ENV`              | Data environment: `dev` or `production` (default: `dev`) |
+| `CLIENT_ORIGIN`        | Allowed CORS origin (default `localhost:7000`)           |
+
+## Environment Scoping
+
+All data collections (except `Admin` and `AdminSession`) carry an `env` field
+that isolates records by environment. The API reads `APP_ENV` from the
+environment and automatically injects `env` into every Prisma query via a
+client extension — no manual filtering is required in repositories or services.
+
+- **Scoped models**: User, UserSession, Product, Purchase, Membership, Feature, ActivityLog, SiteSetting
+- **Global models**: Admin, AdminSession (admins manage all environments)
+- **SiteSettings**: Per-environment (dev can use credentials auth while production uses Clerk)
+- **Seed script**: Respects `APP_ENV` — run `APP_ENV=production pnpm db:seed` to seed production data independently
+
+### First-time setup with existing data
+
+If you already have data in MongoDB from before environment scoping was added,
+run the backfill migration **before** pushing the new schema:
+
+```bash
+npx tsx prisma/migrate-env.ts   # backfills env="dev" on all existing documents
+pnpm prisma:push                # creates compound unique indexes
+```
 
 ## Structure
 
@@ -39,18 +62,18 @@ tests/             Unit tests (Vitest) — mirrors source structure
 
 ## Database Collections
 
-| Collection     | Purpose                                                                                           |
-| -------------- | ------------------------------------------------------------------------------------------------- |
-| `Admin`        | CMS admin accounts (name, email, password, role, status, lockout state)                           |
-| `AdminSession` | Admin cookie-based auth sessions (hashed token, expiry)                                           |
-| `User`         | Application users (name, email, password, status, parentId hierarchy, lockout state)              |
-| `UserSession`  | User cookie-based auth sessions (hashed token, expiry)                                            |
-| `Product`      | Purchasable items (name, slug, type, price, paymentModel, interval, accessKeys, maxSubUsers)      |
-| `Purchase`     | User purchases and subscriptions (userId, productId, status, amount, dates, externalId)           |
-| `Membership`   | Feature access grants from purchases (userId, sourceId, featureKeys, status)                      |
-| `Feature`      | Feature definitions and flags (key, description, category, isActive, sortOrder)                   |
-| `ActivityLog`  | Centralized audit trail (actor, action, resource, IP, UA)                                         |
-| `SiteSetting`  | Key-value configuration store (key, JSON value) for auth provider settings and system preferences |
+| Collection     | Purpose                                                                                            |
+| -------------- | -------------------------------------------------------------------------------------------------- |
+| `Admin`        | CMS admin accounts (name, email, password, role, status, lockout state)                            |
+| `AdminSession` | Admin cookie-based auth sessions (hashed token, expiry)                                            |
+| `User`         | Application users (env, name, email, password, clerkId, status, parentId hierarchy, lockout state) |
+| `UserSession`  | User cookie-based auth sessions (env, hashed token, expiry)                                        |
+| `Product`      | Purchasable items (env, name, slug, type, price, paymentModel, interval, accessKeys, maxSubUsers)  |
+| `Purchase`     | User purchases and subscriptions (env, userId, productId, status, amount, dates, externalId)       |
+| `Membership`   | Feature access grants from purchases (env, userId, sourceId, featureKeys, status)                  |
+| `Feature`      | Feature definitions and flags (env, key, description, category, isActive, sortOrder)               |
+| `ActivityLog`  | Centralized audit trail (env, actor, action, resource, IP, UA)                                     |
+| `SiteSetting`  | Key-value configuration store (env, key, JSON value) for auth provider and system preferences      |
 
 ## Available Endpoints
 
@@ -208,6 +231,7 @@ tests/
   lib/               Pure utility tests (no mocks)
     password.test.ts
     rate-limiter.test.ts
+    env.test.ts
     feature-registry.test.ts
   services/           Business logic tests (mocked repositories)
     admin-service.test.ts

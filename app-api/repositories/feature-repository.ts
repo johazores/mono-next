@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getAppEnv } from "@/lib/env";
 
 export const featureRepository = {
   list() {
@@ -19,7 +20,9 @@ export const featureRepository = {
   },
 
   findByKey(key: string) {
-    return prisma.feature.findUnique({ where: { key } });
+    return prisma.feature.findUnique({
+      where: { env_key: { env: getAppEnv(), key } },
+    });
   },
 
   create(data: {

@@ -1,3 +1,5 @@
+export type { AppEnv } from "@/lib/env";
+
 export type AuthProvider = "credentials" | "clerk";
 
 export type AuthConfig = {

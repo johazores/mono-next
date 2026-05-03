@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { getAppEnv } from "@/lib/env";
 
 export const settingRepository = {
   async get(key: string) {
-    return prisma.siteSetting.findUnique({ where: { key } });
+    return prisma.siteSetting.findUnique({
+      where: { env_key: { env: getAppEnv(), key } },
+    });
   },
 
   async getMany(keys: string[]) {
@@ -14,8 +17,9 @@ export const settingRepository = {
   },
 
   async set(key: string, value: unknown) {
+    const env = getAppEnv();
     return prisma.siteSetting.upsert({
-      where: { key },
+      where: { env_key: { env, key } },
       update: { value: value as never },
       create: { key, value: value as never },
     });

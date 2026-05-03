@@ -24,8 +24,9 @@ model Admin {
 
 model User {
   id                  String         @id @default(auto()) @map("_id") @db.ObjectId
-  email               String         @unique
-  clerkId             String?        @unique
+  env                 String         @default("dev") // dev | production
+  email               String
+  clerkId             String?
   name                String
   passwordHash        String
   status              String         @default("active") // active | disabled
@@ -41,10 +42,14 @@ model User {
   memberships         Membership[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
+
+  @@unique([env, email])
+  @@unique([env, clerkId])
 }
 
 model UserSession {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  env       String   @default("dev") // dev | production
   userId    String   @db.ObjectId
   tokenHash String   @unique
   expiresAt DateTime
@@ -65,6 +70,7 @@ model AdminSession {
 
 model ActivityLog {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  env        String   @default("dev") // dev | production
   actor      String // "admin" | "user" | "system"
   actorId    String?  @db.ObjectId
   actorEmail String?
@@ -81,8 +87,9 @@ model ActivityLog {
 
 model Product {
   id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  env          String     @default("dev") // dev | production
   name         String
-  slug         String     @unique
+  slug         String
   description  String?
   type         String     @default("physical") // physical | digital | membership
   price        Float      @default(0)
@@ -98,10 +105,13 @@ model Product {
   purchases    Purchase[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+
+  @@unique([env, slug])
 }
 
 model Purchase {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  env             String    @default("dev") // dev | production
   userId          String    @db.ObjectId
   productId       String    @db.ObjectId
   status          String    @default("completed") // pending | completed | refunded | failed | active | cancelled | expired
@@ -120,6 +130,7 @@ model Purchase {
 
 model Membership {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  env         String    @default("dev") // dev | production
   userId      String    @db.ObjectId
   type        String // "purchase"
   sourceId    String    @db.ObjectId // purchaseId
@@ -133,19 +144,25 @@ model Membership {
 
 model Feature {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  key         String   @unique
+  env         String   @default("dev") // dev | production
+  key         String
   description String
   category    String
   isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@unique([env, key])
 }
 
 model SiteSetting {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  key       String   @unique
+  env       String   @default("dev") // dev | production
+  key       String
   value     Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([env, key])
 }

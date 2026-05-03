@@ -5,6 +5,9 @@ const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:7000";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["@prisma/client"],
+  env: {
+    APP_ENV: process.env.APP_ENV || "dev",
+  },
   async headers() {
     return [
       {

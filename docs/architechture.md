@@ -11,6 +11,43 @@ Both apps are managed from the root with `pnpm` and `concurrently`.
 
 ---
 
+## Environment Isolation
+
+The system enforces strict environment separation within a single MongoDB database
+using an `env` field on all data collections (except Admin and AdminSession, which
+are global).
+
+### How It Works
+
+- **`APP_ENV`** environment variable (`"dev"` | `"production"`) determines the active environment. Defaults to `"dev"`.
+- A **Prisma client extension** (`lib/prisma.ts`) automatically injects `env` into every query:
+  - Read operations (`findMany`, `findFirst`, `findUnique`, `count`, etc.) get `where.env = APP_ENV`
+  - Create operations get `data.env = APP_ENV`
+  - This is **transparent to repositories and services** — no manual filtering needed
+- **Compound unique constraints** ensure the same slug/email/key can exist independently in each environment (e.g., `@@unique([env, slug])` on Product)
+
+### Scoped vs Global Models
+
+| Scope      | Models                                                                              | Behavior                            |
+| ---------- | ----------------------------------------------------------------------------------- | ----------------------------------- |
+| **Env**    | User, UserSession, Product, Purchase, Membership, Feature, ActivityLog, SiteSetting | Filtered by `APP_ENV` automatically |
+| **Global** | Admin, AdminSession                                                                 | Shared across all environments      |
+
+### Per-Environment Configuration
+
+SiteSettings are scoped by environment, allowing different configurations per env
+(e.g., dev uses credentials auth, production uses Clerk). The compound unique
+`@@unique([env, key])` ensures each environment has its own settings.
+
+### Seeding
+
+```bash
+APP_ENV=dev pnpm db:seed          # seeds dev data
+APP_ENV=production pnpm db:seed   # seeds production data (independent)
+```
+
+---
+
 ## Request Flow
 
 ```
@@ -49,7 +86,7 @@ app-api/
 │   ├── activity-log.ts <- ActivityAction, ActivityActor, ActivityLogRecord, ActivityLogFilter
 │   ├── rate-limiter.ts <- RateLimitEntry, RateLimitConfig, RateLimitResult
 │   ├── response.ts    <- ApiResponse<T>, ListResponse<T>
-│   └── setting.ts     <- AuthProvider, AuthConfig, PublicAuthConfig, SettingRecord
+│   └── setting.ts     <- AppEnv, AuthProvider, AuthConfig, PublicAuthConfig, SettingRecord
 ├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf, request-utils, clerk-auth)
 └── prisma/            <- Schema + seed scripts
 ```
@@ -88,14 +125,14 @@ app-api/
 - **Collections**:
   - `Admin` — CMS admin accounts (name, email, passwordHash, role, status, failedLoginAttempts, lockedUntil, lastLoginAt)
   - `AdminSession` — Admin auth sessions (adminId -> Admin, tokenHash, expiresAt)
-  - `User` — Application users (name, email, passwordHash, status, parentId -> User, ancestors, failedLoginAttempts, lockedUntil, lastLoginAt)
-  - `UserSession` — User auth sessions (userId -> User, tokenHash, expiresAt)
-  - `Product` — Purchasable items (name, slug, description, type, price, currency, paymentModel, interval, maxSubUsers, fileUrl, accessKeys, metadata, isActive, sortOrder)
-  - `Purchase` — User purchases and subscriptions (userId -> User, productId -> Product, status, amount, currency, externalId, startDate, endDate, cancelledAt, metadata)
-  - `Membership` — Feature access grants from purchases (userId -> User, type, sourceId, featureKeys, status, expiresAt)
-  - `Feature` — Feature definitions (key, description, category, isActive, sortOrder)
-  - `ActivityLog` — Audit trail (actor, actorId, actorEmail, action, resource, resourceId, metadata, ip, userAgent, method, path, createdAt)
-  - `SiteSetting` — Key-value configuration store (key, JSON value) for auth provider and system settings
+  - `User` — Application users (env, name, email, passwordHash, clerkId, status, parentId -> User, ancestors, failedLoginAttempts, lockedUntil, lastLoginAt) `@@unique([env, email])` `@@unique([env, clerkId])`
+  - `UserSession` — User auth sessions (env, userId -> User, tokenHash, expiresAt)
+  - `Product` — Purchasable items (env, name, slug, description, type, price, currency, paymentModel, interval, maxSubUsers, fileUrl, accessKeys, metadata, isActive, sortOrder) `@@unique([env, slug])`
+  - `Purchase` — User purchases and subscriptions (env, userId -> User, productId -> Product, status, amount, currency, externalId, startDate, endDate, cancelledAt, metadata)
+  - `Membership` — Feature access grants from purchases (env, userId -> User, type, sourceId, featureKeys, status, expiresAt)
+  - `Feature` — Feature definitions (env, key, description, category, isActive, sortOrder) `@@unique([env, key])`
+  - `ActivityLog` — Audit trail (env, actor, actorId, actorEmail, action, resource, resourceId, metadata, ip, userAgent, method, path, createdAt)
+  - `SiteSetting` — Key-value configuration store (env, key, JSON value) for auth provider and system settings `@@unique([env, key])`
   - All models include `createdAt` (auto-set) and `updatedAt` (auto-managed by Prisma), except `ActivityLog` which only has `createdAt`
 - **Schema location**: `app-api/prisma/schema.prisma`
 

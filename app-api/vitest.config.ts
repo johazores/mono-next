@@ -5,6 +5,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    env: {
+      APP_ENV: "dev",
+    },
   },
   resolve: {
     alias: {

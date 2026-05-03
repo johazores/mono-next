@@ -1,7 +1,10 @@
 import { prisma } from "../lib/prisma";
 import { hashPassword } from "../lib/password";
+import { getAppEnv } from "../lib/env";
 
 async function main() {
+  const env = getAppEnv();
+  console.log(`Seeding for environment: ${env}\n`);
   // Seed products (includes subscription plans and one-time purchases)
   const products = [
     {
@@ -114,7 +117,7 @@ async function main() {
   const seededProducts: Record<string, string> = {};
   for (const product of products) {
     const created = await prisma.product.upsert({
-      where: { slug: product.slug },
+      where: { env_slug: { env, slug: product.slug } },
       update: {
         name: product.name,
         description: product.description,
@@ -213,7 +216,7 @@ async function main() {
 
   for (const feature of features) {
     await prisma.feature.upsert({
-      where: { key: feature.key },
+      where: { env_key: { env, key: feature.key } },
       update: {
         description: feature.description,
         category: feature.category,
@@ -242,7 +245,7 @@ async function main() {
   // Seed user
   const userHash = hashPassword("ChangeMe123!");
   const user = await prisma.user.upsert({
-    where: { email: "user@demo.com" },
+    where: { env_email: { env, email: "user@demo.com" } },
     update: { passwordHash: userHash },
     create: {
       name: "Demo User",
@@ -292,7 +295,7 @@ async function main() {
   // Seed a sub-user under the demo user to exercise the hierarchy system
   const subUserHash = hashPassword("ChangeMe123!");
   const subUser = await prisma.user.upsert({
-    where: { email: "sub@demo.com" },
+    where: { env_email: { env, email: "sub@demo.com" } },
     update: {
       passwordHash: subUserHash,
       parentId: user.id,
@@ -320,7 +323,7 @@ async function main() {
   ];
   for (const setting of defaultSettings) {
     await prisma.siteSetting.upsert({
-      where: { key: setting.key },
+      where: { env_key: { env, key: setting.key } },
       update: {},
       create: { key: setting.key, value: setting.value },
     });

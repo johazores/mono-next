@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/prisma";
+import { getAppEnv } from "@/lib/env";
 import { sendError } from "@/lib/api-response";
 import { getUserSessionSecret } from "@/lib/secure-credentials";
 import { verifyClerkToken } from "@/lib/clerk-auth";
@@ -73,15 +74,18 @@ async function getClerkUserSession(
   if (!clerkPayload?.email) return null;
 
   const email = clerkPayload.email.toLowerCase().trim();
+  const env = getAppEnv();
 
   // Look up by clerkId first, then fall back to email
   let user = await prisma.user.findUnique({
-    where: { clerkId: clerkPayload.sub },
+    where: { env_clerkId: { env, clerkId: clerkPayload.sub } },
   });
 
   if (!user) {
     // Check if a user with this email already exists (e.g. migrated from credentials)
-    user = await prisma.user.findUnique({ where: { email } });
+    user = await prisma.user.findUnique({
+      where: { env_email: { env, email } },
+    });
 
     if (user) {
       // Link existing user to Clerk

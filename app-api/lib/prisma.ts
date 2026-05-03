@@ -1,14 +1,88 @@
 import { PrismaClient } from "@prisma/client";
+import { getAppEnv } from "./env";
+
+/** Models that carry an `env` field for environment scoping. */
+const ENV_SCOPED_MODELS = new Set([
+  "User",
+  "UserSession",
+  "Product",
+  "Purchase",
+  "Membership",
+  "Feature",
+  "ActivityLog",
+  "SiteSetting",
+]);
+
+function isEnvScoped(model: string | undefined): boolean {
+  return !!model && ENV_SCOPED_MODELS.has(model);
+}
+
+const basePrisma = new PrismaClient({
+  log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+});
+
+function createExtendedClient() {
+  return basePrisma.$extends({
+    query: {
+      $allOperations({ model, operation, args, query }) {
+        if (!isEnvScoped(model)) return query(args);
+
+        const env = getAppEnv();
+
+        // Inject env into where clause for read / update / delete operations
+        if (
+          "where" in args &&
+          args.where &&
+          typeof args.where === "object" &&
+          !("env" in args.where)
+        ) {
+          (args.where as Record<string, unknown>).env = env;
+        }
+
+        // Inject env into data for create operations
+        if (operation === "create" && "data" in args && args.data) {
+          if (
+            typeof args.data === "object" &&
+            !Array.isArray(args.data) &&
+            !("env" in args.data)
+          ) {
+            (args.data as Record<string, unknown>).env = env;
+          }
+        }
+
+        // Inject env into each item for createMany
+        if (operation === "createMany" && "data" in args && args.data) {
+          if (Array.isArray(args.data)) {
+            for (const item of args.data) {
+              if (typeof item === "object" && item && !("env" in item)) {
+                (item as Record<string, unknown>).env = env;
+              }
+            }
+          }
+        }
+
+        // Inject env into upsert create data
+        if (operation === "upsert" && "create" in args && args.create) {
+          if (
+            typeof args.create === "object" &&
+            !Array.isArray(args.create) &&
+            !("env" in args.create)
+          ) {
+            (args.create as Record<string, unknown>).env = env;
+          }
+        }
+
+        return query(args);
+      },
+    },
+  });
+}
 
 const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
+  prisma?: ReturnType<typeof createExtendedClient>;
 };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
+export const prisma = globalForPrisma.prisma ?? createExtendedClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

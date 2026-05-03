@@ -54,6 +54,7 @@ export type {
 } from "./rate-limiter";
 export type { ApiResponse, ListResponse } from "./response";
 export type {
+  AppEnv,
   AuthProvider,
   AuthConfig,
   PublicAuthConfig,
