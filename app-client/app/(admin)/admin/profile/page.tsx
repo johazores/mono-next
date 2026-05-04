@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { authService } from "@/services/auth-service";
+import {
+  PageHeader,
+  FormSection,
+  FormField,
+  Notice,
+  Button,
+} from "@/components/ui";
 import type { AuthUser, UpdateAdminProfileInput } from "@/types";
 
 export default function ProfilePage() {
@@ -91,115 +98,82 @@ export default function ProfilePage() {
   if (!admin) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-gray-400">Loading&hellip;</p>
+        <p className="text-sm text-muted">Loading&hellip;</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
-        <p className="mt-1 text-sm text-gray-600">Manage your admin profile.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Profile" description="Manage your admin profile." />
 
       {message && (
-        <div
-          className={`rounded-lg px-4 py-3 text-sm ${
-            message.type === "success"
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
-          {message.text}
-        </div>
+        <Notice
+          message={message.text}
+          variant={message.type === "success" ? "success" : "error"}
+        />
       )}
 
       {/* Profile */}
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Details</h2>
-        <form onSubmit={handleProfileSave} className="mt-4 space-y-4">
+      <FormSection title="Details">
+        <form onSubmit={handleProfileSave} className="space-y-4">
+          <FormField
+            label="Name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               Email
             </label>
             <input
               type="email"
               value={admin.email}
               disabled
-              className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+              className="mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted"
             />
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-muted">
               Admin email cannot be changed from here.
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               Role
             </label>
             <input
               type="text"
               value={admin.role}
               disabled
-              className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm capitalize text-gray-500"
+              className="mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm capitalize text-muted"
             />
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={saving}>
             {saving ? "Saving\u2026" : "Save Changes"}
-          </button>
+          </Button>
         </form>
-      </section>
+      </FormSection>
 
       {/* Change Password */}
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Change Password</h2>
-        <form onSubmit={handlePasswordSave} className="mt-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Current Password
-            </label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              New Password
-            </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+      <FormSection title="Change Password">
+        <form onSubmit={handlePasswordSave} className="space-y-4">
+          <FormField
+            label="Current Password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+          <FormField
+            label="New Password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <Button type="submit" disabled={saving}>
             {saving ? "Updating\u2026" : "Update Password"}
-          </button>
+          </Button>
         </form>
-      </section>
+      </FormSection>
     </div>
   );
 }

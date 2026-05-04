@@ -14,11 +14,11 @@ export function ClerkSignIn({ afterSignIn }: { afterSignIn: () => void }) {
   // Show a link instead of redirecting so the user can see what's happening
   if (isLoaded && isSignedIn) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-4 text-center text-sm text-green-800">
+      <div className="rounded-lg border border-success/20 bg-success/10 px-4 py-4 text-center text-sm text-success">
         <p>You are already signed in.</p>
         <Link
           href="/my-account"
-          className="mt-2 inline-block font-medium text-green-700 underline hover:text-green-900"
+          className="mt-2 inline-block font-medium text-success underline hover:text-success"
         >
           Go to My Account
         </Link>
@@ -38,11 +38,11 @@ export function ClerkSignUp({ afterSignUp }: { afterSignUp: () => void }) {
 
   if (isLoaded && isSignedIn) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-4 text-center text-sm text-green-800">
+      <div className="rounded-lg border border-success/20 bg-success/10 px-4 py-4 text-center text-sm text-success">
         <p>You are already signed in.</p>
         <Link
           href="/my-account"
-          className="mt-2 inline-block font-medium text-green-700 underline hover:text-green-900"
+          className="mt-2 inline-block font-medium text-success underline hover:text-success"
         >
           Go to My Account
         </Link>

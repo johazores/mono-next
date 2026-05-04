@@ -286,14 +286,14 @@ function ProductPricesEditor({
       )
     : stripeProducts;
 
-  if (loading) return <p className="text-xs text-gray-400">Loading prices…</p>;
+  if (loading) return <p className="text-xs text-muted">Loading prices…</p>;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-gray-800">
+        <h4 className="text-sm font-semibold text-foreground">
           Stripe Prices
-          <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-normal text-gray-500">
+          <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-[10px] font-normal text-muted">
             {stripeMode} mode
           </span>
         </h4>
@@ -301,7 +301,7 @@ function ProductPricesEditor({
           <button
             type="button"
             onClick={openBrowser}
-            className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
+            className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-primary-hover"
           >
             + Add from Stripe
           </button>
@@ -310,7 +310,7 @@ function ProductPricesEditor({
 
       {message && (
         <p
-          className={`text-xs ${message.includes("saved") || message.includes("added") ? "text-green-600" : "text-red-600"}`}
+          className={`text-xs ${message.includes("saved") || message.includes("added") ? "text-success" : "text-error"}`}
         >
           {message}
         </p>
@@ -318,24 +318,22 @@ function ProductPricesEditor({
 
       {/* ---- Product browser ---- */}
       {step === "products" && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+        <div className="rounded-lg border border-primary/20 bg-primary/10 p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-700">
+            <p className="text-xs font-semibold text-foreground">
               Select a Stripe Product
             </p>
             <button
               type="button"
               onClick={closeBrowser}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className="text-xs text-muted hover:text-foreground"
             >
               Cancel
             </button>
           </div>
 
           {fetching ? (
-            <p className="text-xs text-gray-400">
-              Loading products from Stripe…
-            </p>
+            <p className="text-xs text-muted">Loading products from Stripe…</p>
           ) : (
             <>
               {stripeProducts.length > 5 && (
@@ -344,11 +342,11 @@ function ProductPricesEditor({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products…"
-                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-lg border border-border px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               )}
               {filteredProducts.length === 0 ? (
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-muted">
                   {stripeProducts.length === 0
                     ? "No products found in Stripe. Create one in your Stripe Dashboard first."
                     : "No products match your search."}
@@ -360,19 +358,19 @@ function ProductPricesEditor({
                       key={product.id}
                       type="button"
                       onClick={() => selectProduct(product)}
-                      className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                      className="flex w-full items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 text-left transition hover:border-primary hover:bg-primary/10"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {product.name}
                         </p>
                         {product.description && (
-                          <p className="text-xs text-gray-500 truncate">
+                          <p className="text-xs text-muted truncate">
                             {product.description}
                           </p>
                         )}
                       </div>
-                      <span className="shrink-0 font-mono text-[10px] text-gray-400">
+                      <span className="shrink-0 font-mono text-[10px] text-muted">
                         {product.id}
                       </span>
                     </button>
@@ -386,14 +384,14 @@ function ProductPricesEditor({
 
       {/* ---- Price picker ---- */}
       {step === "prices" && selectedProduct && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+        <div className="rounded-lg border border-primary/20 bg-primary/10 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-gray-700 truncate">
+              <p className="text-xs font-semibold text-foreground truncate">
                 {selectedProduct.name}
               </p>
               {selectedProduct.description && (
-                <p className="text-[11px] text-gray-500 truncate">
+                <p className="text-[11px] text-muted truncate">
                   {selectedProduct.description}
                 </p>
               )}
@@ -402,14 +400,14 @@ function ProductPricesEditor({
               <button
                 type="button"
                 onClick={() => setStep("products")}
-                className="text-xs text-blue-600 hover:underline"
+                className="text-xs text-primary hover:underline"
               >
                 ← Back
               </button>
               <button
                 type="button"
                 onClick={closeBrowser}
-                className="text-xs text-gray-500 hover:text-gray-700"
+                className="text-xs text-muted hover:text-foreground"
               >
                 Cancel
               </button>
@@ -417,17 +415,15 @@ function ProductPricesEditor({
           </div>
 
           {fetching ? (
-            <p className="text-xs text-gray-400">Loading prices…</p>
+            <p className="text-xs text-muted">Loading prices…</p>
           ) : stripePrices.length === 0 ? (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted">
               No active prices found for this product. Create one in your Stripe
               Dashboard.
             </p>
           ) : (
             <div className="space-y-1">
-              <p className="text-[11px] text-gray-500">
-                Click a price to add it:
-              </p>
+              <p className="text-[11px] text-muted">Click a price to add it:</p>
               {stripePrices.map((sp) => {
                 const alreadyAdded = prices.some(
                   (p) => p.stripePriceId === sp.id,
@@ -440,33 +436,31 @@ function ProductPricesEditor({
                     onClick={() => addPrice(sp)}
                     className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left transition ${
                       alreadyAdded
-                        ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                        : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50"
+                        ? "border-border bg-surface text-muted cursor-not-allowed"
+                        : "border-border bg-background hover:border-primary hover:bg-primary/10"
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-foreground">
                         {formatAmount(sp.amount, sp.currency, sp.interval)}
                       </span>
                       {sp.nickname && (
-                        <span className="ml-2 text-xs text-gray-500">
+                        <span className="ml-2 text-xs text-muted">
                           {sp.nickname}
                         </span>
                       )}
-                      <span className="ml-2 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-500">
+                      <span className="ml-2 rounded bg-surface px-1 py-0.5 text-[10px] text-muted">
                         {sp.interval ? "recurring" : "one-time"}
                       </span>
                     </div>
                     <div className="shrink-0 flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-gray-400">
+                      <span className="font-mono text-[10px] text-muted">
                         {sp.id}
                       </span>
                       {alreadyAdded ? (
-                        <span className="text-[10px] text-green-600">
-                          Added
-                        </span>
+                        <span className="text-[10px] text-success">Added</span>
                       ) : (
-                        <span className="text-xs text-blue-600">+ Add</span>
+                        <span className="text-xs text-primary">+ Add</span>
                       )}
                     </div>
                   </button>
@@ -479,38 +473,38 @@ function ProductPricesEditor({
 
       {/* ---- Added prices table ---- */}
       {prices.length === 0 ? (
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-muted">
           No prices configured. Add a Stripe price to enable checkout.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 text-xs">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-hidden rounded-lg border border-border text-xs">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface">
               <tr>
-                <th className="px-3 py-1.5 text-left font-medium text-gray-600">
+                <th className="px-3 py-1.5 text-left font-medium text-muted">
                   Label
                 </th>
-                <th className="px-3 py-1.5 text-left font-medium text-gray-600">
+                <th className="px-3 py-1.5 text-left font-medium text-muted">
                   Mode
                 </th>
-                <th className="px-3 py-1.5 text-left font-medium text-gray-600">
+                <th className="px-3 py-1.5 text-left font-medium text-muted">
                   Amount
                 </th>
-                <th className="px-3 py-1.5 text-left font-medium text-gray-600">
+                <th className="px-3 py-1.5 text-left font-medium text-muted">
                   Status
                 </th>
-                <th className="px-3 py-1.5 text-right font-medium text-gray-600">
+                <th className="px-3 py-1.5 text-right font-medium text-muted">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-border bg-background">
               {prices.map((price) => (
                 <tr key={price.id}>
-                  <td className="px-3 py-1.5 font-medium text-gray-900">
+                  <td className="px-3 py-1.5 font-medium text-foreground">
                     {price.label}
                     {price.isDefault && (
-                      <span className="ml-1 rounded bg-blue-100 px-1 py-0.5 text-[10px] text-blue-700">
+                      <span className="ml-1 rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">
                         default
                       </span>
                     )}
@@ -519,22 +513,22 @@ function ProductPricesEditor({
                     <span
                       className={`rounded px-1 py-0.5 ${
                         price.mode === "live"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
+                          ? "bg-success/10 text-success"
+                          : "bg-warning/10 text-warning"
                       }`}
                     >
                       {price.mode}
                     </span>
                   </td>
-                  <td className="px-3 py-1.5 text-gray-700">
+                  <td className="px-3 py-1.5 text-foreground">
                     {formatAmount(price.amount, price.currency, price.interval)}
                   </td>
                   <td className="px-3 py-1.5">
                     <span
                       className={`rounded px-1 py-0.5 ${
                         isActive(price)
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-500"
+                          ? "bg-success/10 text-success"
+                          : "bg-surface text-muted"
                       }`}
                     >
                       {isActive(price) ? "Active" : "Inactive"}
@@ -544,7 +538,7 @@ function ProductPricesEditor({
                     <button
                       type="button"
                       onClick={() => handleDelete(price.id)}
-                      className="text-red-600 hover:underline"
+                      className="text-error hover:underline"
                     >
                       Remove
                     </button>
@@ -575,7 +569,7 @@ export default function ProductsPage() {
       }
       emptyItem={emptyProduct}
       renderEditorExtra={(item, setField) => (
-        <div className="col-span-2 mt-4 space-y-6 border-t border-gray-200 pt-4">
+        <div className="col-span-2 mt-4 space-y-6 border-t border-border pt-4">
           <ProductPricesEditor
             productId={item.id as string | undefined}
             onPendingChange={(prices) => setField("prices", prices)}

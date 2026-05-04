@@ -99,6 +99,25 @@ pnpm setup:api      # install + push + seed in one command
 | `auth.provider`            | `credentials` | Authentication provider |
 | `auth.clerkPublishableKey` | (empty)       | Clerk frontend key      |
 | `auth.clerkSecretKey`      | (empty)       | Clerk backend key       |
+| `site.title`               | `mono-next`   | Site display name       |
+| `site.tagline`             | (empty)       | Site tagline            |
+| `site.favicon`             | (empty)       | Favicon URL             |
+| `site.logo`                | (empty)       | Logo URL                |
+| `site.logoDark`            | (empty)       | Dark mode logo URL      |
+| `theme.primary`            | `#2563eb`     | Primary brand color     |
+| `theme.primaryHover`       | `#1d4ed8`     | Primary hover state     |
+| `theme.accent`             | `#7c3aed`     | Accent color            |
+| `theme.background`         | `#ffffff`     | Page background         |
+| `theme.surface`            | `#f9fafb`     | Card/surface background |
+| `theme.border`             | `#e5e7eb`     | Border color            |
+| `theme.text`               | `#111827`     | Primary text color      |
+| `theme.textMuted`          | `#6b7280`     | Secondary text color    |
+| `theme.success`            | `#16a34a`     | Success state color     |
+| `theme.error`              | `#dc2626`     | Error state color       |
+| `theme.warning`            | `#d97706`     | Warning state color     |
+| `theme.info`               | `#2563eb`     | Info state color        |
+
+Theme colors are loaded by the frontend `SiteConfigProvider` and injected as CSS custom properties at runtime. Admin can change them from Settings > Theme Colors.
 
 ---
 
@@ -108,7 +127,7 @@ Tests use **Vitest** and mock all repositories — no database connection needed
 
 ```bash
 # From the repo root
-pnpm test            # single run (156 tests)
+pnpm test            # single run (211 tests)
 pnpm test:watch      # watch mode for development
 ```
 
@@ -121,21 +140,26 @@ pnpm test
 
 ### Test Files & What They Cover
 
-| File                                          | Tests | Covers                                                 |
-| --------------------------------------------- | ----- | ------------------------------------------------------ |
-| `tests/lib/password.test.ts`                  | 8     | PBKDF2 hashing, salt uniqueness, password verification |
-| `tests/lib/rate-limiter.test.ts`              | 6     | Sliding window rate limiter (allow/block/remaining)    |
-| `tests/lib/env.test.ts`                       | 5     | APP_ENV validation, defaults, invalid values           |
-| `tests/lib/feature-registry.test.ts`          | 12    | Feature cache, definitions, enabled checks             |
-| `tests/services/admin-service.test.ts`        | 22    | Admin CRUD, login, validation, duplicate detection     |
-| `tests/services/user-service.test.ts`         | 37    | User CRUD, registration, sub-user, profile updates     |
-| `tests/services/activity-log-service.test.ts` | 4     | Activity log creation, listing, error handling         |
-| `tests/services/product-service.test.ts`      | 18    | Product CRUD, slug uniqueness, access key validation   |
-| `tests/services/purchase-service.test.ts`     | 10    | Purchase creation, ownership checks, subscriptions     |
-| `tests/services/membership-service.test.ts`   | 6     | Grant, revoke, list memberships                        |
-| `tests/services/feature-service.test.ts`      | 11    | Feature access checks, enabled features, definitions   |
-| `tests/services/report-service.test.ts`       | 5     | Admin dashboard aggregation, user reports              |
-| `tests/services/setting-service.test.ts`      | 12    | Setting get/set, auth config defaults, public config   |
+| File                                           | Tests | Covers                                                 |
+| ---------------------------------------------- | ----- | ------------------------------------------------------ |
+| `tests/lib/password.test.ts`                   | 8     | PBKDF2 hashing, salt uniqueness, password verification |
+| `tests/lib/rate-limiter.test.ts`               | 6     | Sliding window rate limiter (allow/block/remaining)    |
+| `tests/lib/env.test.ts`                        | 5     | APP_ENV validation, defaults, invalid values           |
+| `tests/lib/feature-registry.test.ts`           | 12    | Feature cache, definitions, enabled checks             |
+| `tests/lib/payment/stripe-provider.test.ts`    | 3     | Stripe checkout session creation, session verification |
+| `tests/services/admin-service.test.ts`         | 22    | Admin CRUD, login, validation, duplicate detection     |
+| `tests/services/user-service.test.ts`          | 37    | User CRUD, registration, sub-user, profile updates     |
+| `tests/services/activity-log-service.test.ts`  | 4     | Activity log creation, listing, error handling         |
+| `tests/services/product-service.test.ts`       | 18    | Product CRUD, slug uniqueness, access key validation   |
+| `tests/services/product-price-service.test.ts` | 8     | Price CRUD, active price resolution, date ranges       |
+| `tests/services/purchase-service.test.ts`      | 10    | Purchase creation, ownership checks, subscriptions     |
+| `tests/services/purchase-file-service.test.ts` | 9     | File upload, download, ownership verification          |
+| `tests/services/membership-service.test.ts`    | 6     | Grant, revoke, list memberships                        |
+| `tests/services/feature-service.test.ts`       | 11    | Feature access checks, enabled features, definitions   |
+| `tests/services/report-service.test.ts`        | 5     | Admin dashboard aggregation, user reports              |
+| `tests/services/setting-service.test.ts`       | 21    | Setting get/set, auth/payment/site config, validation  |
+| `tests/services/billing-service.test.ts`       | 11    | Stripe customer sync, subscriptions, invoices          |
+| `tests/services/checkout-service.test.ts`      | 15    | Checkout session creation, verification, guest flow    |
 
 ### Detailed Test Breakdown
 
@@ -177,18 +201,23 @@ pnpm test
  ✓ tests/lib/rate-limiter.test.ts (6 tests)
  ✓ tests/lib/feature-registry.test.ts (12 tests)
  ✓ tests/lib/password.test.ts (8 tests)
+ ✓ tests/lib/payment/stripe-provider.test.ts (3 tests)
  ✓ tests/services/activity-log-service.test.ts (4 tests)
  ✓ tests/services/product-service.test.ts (18 tests)
+ ✓ tests/services/product-price-service.test.ts (8 tests)
  ✓ tests/services/purchase-service.test.ts (10 tests)
+ ✓ tests/services/purchase-file-service.test.ts (9 tests)
  ✓ tests/services/membership-service.test.ts (6 tests)
  ✓ tests/services/feature-service.test.ts (11 tests)
  ✓ tests/services/report-service.test.ts (5 tests)
- ✓ tests/services/setting-service.test.ts (12 tests)
+ ✓ tests/services/setting-service.test.ts (21 tests)
+ ✓ tests/services/billing-service.test.ts (11 tests)
+ ✓ tests/services/checkout-service.test.ts (15 tests)
  ✓ tests/services/user-service.test.ts (37 tests)
  ✓ tests/services/admin-service.test.ts (22 tests)
 
- Test Files  13 passed (13)
-      Tests  156 passed (156)
+ Test Files  18 passed (18)
+      Tests  211 passed (211)
 ```
 
 > Tests also run automatically before every build via the `prebuild` hook. If any test fails, the build is blocked.

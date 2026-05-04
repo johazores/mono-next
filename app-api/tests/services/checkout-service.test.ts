@@ -229,7 +229,7 @@ describe("checkoutService.createSession", () => {
 
   it("throws when no active price is configured", async () => {
     productRepo.findById.mockResolvedValue(fakeProduct() as never);
-    priceRepo.findActivePrice.mockResolvedValue(null);
+    priceRepo.findActivePrice.mockResolvedValue(null as never);
 
     await expect(
       checkoutService.createSession({

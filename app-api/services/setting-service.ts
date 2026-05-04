@@ -7,6 +7,8 @@ import type {
   PaymentMode,
   PaymentProviderName,
   PublicPaymentConfig,
+  SiteConfig,
+  ThemeTokens,
 } from "@/types";
 
 const ALLOWED_KEYS = new Set([
@@ -19,6 +21,25 @@ const ALLOWED_KEYS = new Set([
   "payment.stripe.testSecretKey",
   "payment.stripe.livePublicKey",
   "payment.stripe.liveSecretKey",
+  // Site identity
+  "site.title",
+  "site.tagline",
+  "site.favicon",
+  "site.logo",
+  "site.logoDark",
+  // Theme tokens
+  "theme.primary",
+  "theme.primaryHover",
+  "theme.accent",
+  "theme.background",
+  "theme.surface",
+  "theme.border",
+  "theme.text",
+  "theme.textMuted",
+  "theme.success",
+  "theme.error",
+  "theme.warning",
+  "theme.info",
 ]);
 
 const AUTH_DEFAULTS: AuthConfig = {
@@ -61,6 +82,14 @@ export const settingService = {
       if (!valid.includes(value as PaymentMode)) {
         throw new Error(
           `Invalid payment mode. Must be one of: ${valid.join(", ")}`,
+        );
+      }
+    }
+
+    if (key.startsWith("theme.") && typeof value === "string" && value !== "") {
+      if (!/^#[0-9a-fA-F]{6}$/.test(value)) {
+        throw new Error(
+          `Invalid color value for ${key}. Must be a hex color (e.g. #2563eb).`,
         );
       }
     }
@@ -136,6 +165,28 @@ export const settingService = {
       provider: config.provider,
       mode: config.mode,
       publicKey: config.publicKey,
+    };
+  },
+
+  async getSiteConfig(): Promise<SiteConfig> {
+    const records = await settingRepository.getAll();
+    const map = new Map(records.map((r) => [r.key, r.value]));
+
+    const theme: ThemeTokens = {};
+    for (const [key, val] of map) {
+      if (key.startsWith("theme.") && typeof val === "string" && val !== "") {
+        const token = key.slice(6) as keyof ThemeTokens;
+        theme[token] = val;
+      }
+    }
+
+    return {
+      title: (map.get("site.title") as string) ?? "mono-next",
+      tagline: (map.get("site.tagline") as string) ?? "",
+      favicon: (map.get("site.favicon") as string) ?? "",
+      logo: (map.get("site.logo") as string) ?? "",
+      logoDark: (map.get("site.logoDark") as string) ?? "",
+      theme,
     };
   },
 };

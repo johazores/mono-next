@@ -324,6 +324,28 @@ async function main() {
     { key: "payment.stripe.testSecretKey", value: "" },
     { key: "payment.stripe.livePublicKey", value: "" },
     { key: "payment.stripe.liveSecretKey", value: "" },
+    // Site identity
+    { key: "site.title", value: "mono-next" },
+    {
+      key: "site.tagline",
+      value: "Full-stack monorepo with admin panel, user dashboard, and API.",
+    },
+    { key: "site.favicon", value: "" },
+    { key: "site.logo", value: "" },
+    { key: "site.logoDark", value: "" },
+    // Theme tokens (defaults match Tailwind blue-600 palette)
+    { key: "theme.primary", value: "#2563eb" },
+    { key: "theme.primaryHover", value: "#1d4ed8" },
+    { key: "theme.accent", value: "#7c3aed" },
+    { key: "theme.background", value: "#ffffff" },
+    { key: "theme.surface", value: "#f9fafb" },
+    { key: "theme.border", value: "#e5e7eb" },
+    { key: "theme.text", value: "#111827" },
+    { key: "theme.textMuted", value: "#6b7280" },
+    { key: "theme.success", value: "#16a34a" },
+    { key: "theme.error", value: "#dc2626" },
+    { key: "theme.warning", value: "#d97706" },
+    { key: "theme.info", value: "#2563eb" },
   ];
   for (const setting of defaultSettings) {
     await prisma.siteSetting.upsert({

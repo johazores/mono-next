@@ -108,3 +108,20 @@ export async function publicPaymentConfigController(
   const config = await settingService.getPublicPaymentConfig();
   sendOk(res, config);
 }
+
+export async function publicSiteConfigController(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+
+  if (req.method !== "GET") {
+    return sendError(res, "Method not allowed.", 405);
+  }
+
+  const config = await settingService.getSiteConfig();
+  sendOk(res, config);
+}

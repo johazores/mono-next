@@ -32,7 +32,7 @@ export default function AdminLayout({
   if (!checked) {
     return (
       <div className="flex min-h-full items-center justify-center">
-        <p className="text-sm text-gray-400">Loading&hellip;</p>
+        <p className="text-sm text-muted">Loading&hellip;</p>
       </div>
     );
   }

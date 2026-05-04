@@ -91,7 +91,7 @@ app-api/
 │   ├── activity-log.ts <- ActivityAction, ActivityActor, ActivityLogRecord, ActivityLogFilter
 │   ├── rate-limiter.ts <- RateLimitEntry, RateLimitConfig, RateLimitResult
 │   ├── response.ts    <- ApiResponse<T>, ListResponse<T>
-│   └── setting.ts     <- AppEnv, AuthProvider, AuthConfig, PublicAuthConfig, SettingRecord
+│   └── setting.ts     <- AppEnv, AuthProvider, AuthConfig, PublicAuthConfig, SettingRecord, ThemeTokens, SiteConfig
 ├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf, request-utils, clerk-auth)
 └── prisma/            <- Schema + seed scripts
 ```
@@ -197,8 +197,8 @@ app-client/
 └── types/             <- Shared type definitions (barrel-exported via index.ts)
     ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
     ├── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection, FieldRendererProps, DynamicOption, ResourceManagerProps, ResourceEditorProps, ResourceListProps
-    ├── ui.ts          <- ButtonVariant, ButtonProps, StatusBadgeProps, NoticeProps, ModalProps, NavItem
-    ├── hooks.ts       <- FeaturesState, AdminResourceState<T>
+    ├── ui.ts          <- ButtonVariant, ButtonProps, StatusBadgeProps, NoticeProps, ModalProps, NavItem, StatCardProps, DashboardCardProps, PageHeaderProps, FormFieldProps, FormSectionProps, EmptyStateProps
+    ├── hooks.ts       <- FeaturesState, AdminResourceState<T>, AuthConfigContextValue, CartContextValue
     ├── auth.ts        <- AuthUser, UpdateAdminProfileInput
     ├── user.ts        <- AppUser, UpdateUserProfileInput
     ├── sub-user.ts    <- SubUser, CreateSubUserInput
@@ -210,15 +210,19 @@ app-client/
     ├── download.ts    <- PurchaseDownload, DownloadFile
     ├── report.ts      <- AdminReport, ReportPeriod, ProductBreakdown, SubscriptionBreakdown
     ├── activity-log.ts <- ActivityLogEntry, ActivityLogList
-    └── setting.ts     <- AuthProvider, PublicAuthConfig
+    ├── setting.ts     <- AuthProvider, PublicAuthConfig, SettingItem, PaymentMode, AuthSettings, PaymentSettings
+    └── site-config.ts <- ThemeTokens, SiteConfig
 ```
 
 ### Key Patterns
 
-- **Tailwind-only styling**: No custom CSS. All styling via Tailwind utility classes co-located in JSX
-- **UI primitives**: Reusable `Button`, `Modal`, `Notice`, `StatusBadge` components in `components/ui/`
-- **Admin layout shell**: `AdminShell` provides sidebar navigation wrapping admin pages
-- **User layout shell**: `UserShell` provides sidebar navigation with plan badge wrapping user pages
+- **Design tokens via CSS custom properties**: Theme colors defined as `--theme-*` vars in `globals.css`, mapped to Tailwind utilities via `@theme` directive, and overridden at runtime by `SiteConfigProvider`
+- **Tailwind-only styling**: All styling via Tailwind utility classes co-located in JSX, plus design token CSS vars for theming
+- **UI primitives**: Reusable `Button`, `Modal`, `Notice`, `StatusBadge`, `PageHeader`, `FormField`, `FormSection`, `EmptyState`, `StatCard`, `DashboardCard` components in `components/ui/`
+- **Admin layout shell**: `AdminShell` provides sidebar navigation with icons (Lucide), mobile hamburger menu, user avatar, wrapping admin pages
+- **User layout shell**: `UserShell` provides sidebar navigation with icons, plan badge, mobile menu wrapping user pages
+- **Site config provider**: `SiteConfigProvider` fetches site identity and theme tokens from `/api/settings/site` and injects CSS custom properties at runtime. `useSiteConfig()` hook exposes `title`, `tagline`, `logo`, etc. to any component
+- **Dynamic head**: `DynamicHead` component sets favicon from site config
 - **Decomposed CRUD**: `ResourceManager` orchestrates `ResourceEditor` (modal form) and `ResourceList` (item cards)
 - **Generic CRUD client**: `resourceService.list/create/update/remove/save` works for any endpoint
 - **Auto-refresh hook**: `useAdminResource<T>` polls every 15s for fresh data

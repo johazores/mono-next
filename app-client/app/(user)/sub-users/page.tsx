@@ -4,7 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { getMyFeatures } from "@/services/feature-service";
 import { subUserService } from "@/services/sub-user-service";
 import type { SubUser, CreateSubUserResult } from "@/types";
-import { Button, Modal, Notice } from "@/components/ui";
+import {
+  Button,
+  Modal,
+  Notice,
+  PageHeader,
+  StatusBadge,
+  EmptyState,
+} from "@/components/ui";
 
 export default function SubUsersPage() {
   const [items, setItems] = useState<SubUser[]>([]);
@@ -100,29 +107,27 @@ export default function SubUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Sub-Users</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Manage users under your account. They inherit your features.
-          </p>
-        </div>
-        {canCreate && (
-          <Button onClick={() => setShowCreate(true)}>Add Sub-User</Button>
-        )}
-      </div>
+      <PageHeader
+        title="Sub-Users"
+        description="Manage users under your account. They inherit your features."
+        action={
+          canCreate ? (
+            <Button onClick={() => setShowCreate(true)}>Add Sub-User</Button>
+          ) : undefined
+        }
+      />
 
       {message && <Notice message={message.text} variant={message.type} />}
 
       {createResult?.generatedPassword && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-medium text-amber-800">
+        <div className="rounded-lg border border-warning/20 bg-warning/10 p-4">
+          <p className="text-sm font-medium text-warning">
             Generated password for {createResult.user.email}:
           </p>
-          <code className="mt-1 block rounded bg-white px-3 py-2 font-mono text-sm text-gray-900 select-all">
+          <code className="mt-1 block rounded bg-background px-3 py-2 font-mono text-sm text-foreground select-all">
             {createResult.generatedPassword}
           </code>
-          <p className="mt-2 text-xs text-amber-600">
+          <p className="mt-2 text-xs text-warning">
             Save this password now. It will not be shown again.
           </p>
         </div>
@@ -135,51 +140,56 @@ export default function SubUsersPage() {
         />
       )}
 
-      {loading && <p className="text-sm text-gray-400">Loading&hellip;</p>}
+      {loading && <p className="text-sm text-muted">Loading&hellip;</p>}
       {error && <Notice message={error} variant="error" />}
 
       {!loading && canCreate && items.length === 0 && (
-        <p className="text-sm text-gray-500">No sub-users yet.</p>
+        <EmptyState message="No sub-users yet." />
       )}
 
       {items.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-hidden rounded-xl border border-border bg-background">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                   Name
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                   Email
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                   Status
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {items.map((u) => (
-                <tr key={u.id}>
-                  <td className="px-4 py-3 text-sm text-gray-900">{u.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{u.email}</td>
+                <tr
+                  key={u.id}
+                  className="transition-colors hover:bg-surface/60"
+                >
+                  <td className="px-4 py-3 text-sm text-foreground">
+                    {u.name}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted">{u.email}</td>
                   <td className="px-4 py-3 text-sm">
-                    <span
-                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${u.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
-                    >
-                      {u.status}
-                    </span>
+                    <StatusBadge
+                      status={u.status}
+                      variant={u.status === "active" ? "success" : "muted"}
+                    />
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleRevoke(u)}
-                      className="text-sm text-red-600 hover:text-red-800"
                     >
                       Revoke
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -219,7 +229,7 @@ export default function SubUsersPage() {
             className="space-y-4"
           >
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-foreground">
                 Email
               </label>
               <input
@@ -227,9 +237,9 @@ export default function SubUsersPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm"
               />
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-muted">
                 If this email already exists, the user will be linked instead of
                 created.
               </p>

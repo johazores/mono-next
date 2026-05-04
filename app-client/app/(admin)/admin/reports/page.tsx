@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { reportService } from "@/services/report-service";
+import { PageHeader, StatCard } from "@/components/ui";
 import type { AdminReport, ReportPeriod } from "@/types";
+import { DollarSign, ArrowLeftRight, Users, UserPlus } from "lucide-react";
 
 const periods = [
   { value: "7d", label: "Last 7 days" },
@@ -10,15 +12,6 @@ const periods = [
   { value: "90d", label: "Last 90 days" },
   { value: "1y", label: "Last year" },
 ];
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
-    </div>
-  );
-}
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<ReportPeriod>("30d");
@@ -43,73 +36,78 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Revenue, subscriptions, purchases, and user statistics.
-          </p>
-        </div>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-        >
-          {periods.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <PageHeader
+        title="Reports"
+        description="Revenue, subscriptions, purchases, and user statistics."
+        action={
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
+            className="rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            {periods.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        }
+      />
 
-      {loading && <p className="text-sm text-gray-400">Loading&hellip;</p>}
+      {loading && <p className="text-sm text-muted">Loading&hellip;</p>}
 
       {report && !loading && (
         <>
           {/* Top stats */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat
+            <StatCard
               label="Revenue"
               value={`$${report.revenue.totalRevenue.toFixed(2)}`}
+              icon={<DollarSign size={20} />}
             />
-            <Stat
+            <StatCard
               label="Transactions"
               value={report.revenue.totalTransactions}
+              icon={<ArrowLeftRight size={20} />}
             />
-            <Stat label="Total Users" value={report.users.totalUsers} />
-            <Stat
+            <StatCard
+              label="Total Users"
+              value={report.users.totalUsers}
+              icon={<Users size={20} />}
+            />
+            <StatCard
               label="New Users (30d)"
               value={report.users.newUsersLast30Days}
+              icon={<UserPlus size={20} />}
             />
           </div>
 
           {/* Subscriptions */}
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="overflow-hidden rounded-xl border border-border bg-background p-5">
+            <h2 className="text-lg font-semibold text-foreground">
               Subscriptions
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted">
               {report.subscriptions.activeSubscriptions} active of{" "}
               {report.subscriptions.totalSubscriptions} total
             </p>
             {report.subscriptions.byProduct.length > 0 && (
-              <table className="mt-4 min-w-full divide-y divide-gray-200 text-sm">
+              <table className="mt-4 min-w-full divide-y divide-border text-sm">
                 <thead>
                   <tr>
-                    <th className="py-2 text-left font-medium text-gray-500">
+                    <th className="py-2 text-left font-medium text-muted">
                       Product
                     </th>
-                    <th className="py-2 text-right font-medium text-gray-500">
+                    <th className="py-2 text-right font-medium text-muted">
                       Active
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {report.subscriptions.byProduct.map((bp) => (
                     <tr key={bp.productId}>
-                      <td className="py-2 text-gray-700">{bp.productName}</td>
-                      <td className="py-2 text-right text-gray-900">
+                      <td className="py-2 text-foreground">{bp.productName}</td>
+                      <td className="py-2 text-right text-foreground">
                         {bp.count}
                       </td>
                     </tr>
@@ -120,36 +118,36 @@ export default function ReportsPage() {
           </div>
 
           {/* Purchases by product */}
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="overflow-hidden rounded-xl border border-border bg-background p-5">
+            <h2 className="text-lg font-semibold text-foreground">
               Purchases by Product
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted">
               {report.purchases.totalPurchases} total purchases
             </p>
             {report.purchases.byProduct.length > 0 && (
-              <table className="mt-4 min-w-full divide-y divide-gray-200 text-sm">
+              <table className="mt-4 min-w-full divide-y divide-border text-sm">
                 <thead>
                   <tr>
-                    <th className="py-2 text-left font-medium text-gray-500">
+                    <th className="py-2 text-left font-medium text-muted">
                       Product
                     </th>
-                    <th className="py-2 text-right font-medium text-gray-500">
+                    <th className="py-2 text-right font-medium text-muted">
                       Sales
                     </th>
-                    <th className="py-2 text-right font-medium text-gray-500">
+                    <th className="py-2 text-right font-medium text-muted">
                       Revenue
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {report.purchases.byProduct.map((bp) => (
                     <tr key={bp.productId}>
-                      <td className="py-2 text-gray-700">{bp.productName}</td>
-                      <td className="py-2 text-right text-gray-900">
+                      <td className="py-2 text-foreground">{bp.productName}</td>
+                      <td className="py-2 text-right text-foreground">
                         {bp.count}
                       </td>
-                      <td className="py-2 text-right text-gray-900">
+                      <td className="py-2 text-right text-foreground">
                         ${bp.revenue.toFixed(2)}
                       </td>
                     </tr>

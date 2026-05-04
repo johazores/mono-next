@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { activityLogService } from "@/services/activity-log-service";
+import { PageHeader, Button } from "@/components/ui";
 import type { ActivityLogEntry } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -61,12 +62,10 @@ export default function ActivityPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Activity Log</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Track actions performed by admins, users, and the system.
-        </p>
-      </div>
+      <PageHeader
+        title="Activity Log"
+        description="Track actions performed by admins, users, and the system."
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -76,7 +75,7 @@ export default function ActivityPage() {
             setActionFilter(e.target.value);
             setPage(1);
           }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         >
           <option value="">All Actions</option>
           {Object.entries(actionLabels).map(([value, label]) => (
@@ -91,7 +90,7 @@ export default function ActivityPage() {
             setActorFilter(e.target.value);
             setPage(1);
           }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         >
           <option value="">All Actors</option>
           <option value="admin">Admin</option>
@@ -101,33 +100,33 @@ export default function ActivityPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-hidden rounded-xl border border-border bg-background">
+        <table className="min-w-full divide-y divide-border">
+          <thead className="bg-surface">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                 Time
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                 Action
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                 Actor
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                 Resource
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                 IP
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {loading ? (
               <tr>
                 <td
                   colSpan={5}
-                  className="px-4 py-8 text-center text-sm text-gray-400"
+                  className="px-4 py-8 text-center text-sm text-muted"
                 >
                   Loading&hellip;
                 </td>
@@ -136,34 +135,37 @@ export default function ActivityPage() {
               <tr>
                 <td
                   colSpan={5}
-                  className="px-4 py-8 text-center text-sm text-gray-400"
+                  className="px-4 py-8 text-center text-sm text-muted"
                 >
                   No activity logs found.
                 </td>
               </tr>
             ) : (
               items.map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-50">
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                <tr
+                  key={entry.id}
+                  className="transition-colors hover:bg-surface/60"
+                >
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-muted">
                     {new Date(entry.createdAt).toLocaleString()}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                    <span className="inline-flex rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-foreground">
                       {actionLabels[entry.action] ?? entry.action}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">
                     <span className="capitalize">{entry.actor}</span>
                     {entry.actorEmail && (
-                      <span className="ml-1 text-gray-400">
+                      <span className="ml-1 text-muted">
                         ({entry.actorEmail})
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-muted">
                     {entry.resource ?? "—"}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-400 font-mono">
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-muted font-mono">
                     {entry.ip ?? "—"}
                   </td>
                 </tr>
@@ -176,24 +178,26 @@ export default function ActivityPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted">
             Page {page} of {totalPages} ({total} total)
           </p>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50"
             >
               Previous
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50"
             >
               Next
-            </button>
+            </Button>
           </div>
         </div>
       )}

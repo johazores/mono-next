@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Notice } from "@/components/ui";
+import { Button, Notice, PageHeader } from "@/components/ui";
 import { ResourceEditor } from "@/components/admin/resource-editor";
 import { ResourceList } from "@/components/admin/resource-list";
 import { useAdminResource } from "@/hooks/use-admin-resource";
@@ -62,23 +62,21 @@ export function ResourceManager({
   }
 
   return (
-    <section className="grid gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage your {title.toLowerCase()} from here.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditingItem(emptyItem);
-            setNotice(null);
-          }}
-        >
-          Add New
-        </Button>
-      </div>
+    <section className="space-y-6">
+      <PageHeader
+        title={title}
+        description={`Manage your ${title.toLowerCase()} from here.`}
+        action={
+          <Button
+            onClick={() => {
+              setEditingItem(emptyItem);
+              setNotice(null);
+            }}
+          >
+            Add New
+          </Button>
+        }
+      />
 
       {notice && <Notice message={notice.message} variant={notice.variant} />}
       {error && <Notice message={error} variant="error" />}

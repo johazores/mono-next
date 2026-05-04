@@ -84,6 +84,8 @@ export type {
   AuthConfig,
   PublicAuthConfig,
   SettingRecord,
+  SiteConfig,
+  ThemeTokens,
 } from "./setting";
 export type {
   StripeProductSummary,

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/hooks/use-cart";
 import { checkoutService } from "@/services/checkout-service";
 import { userAuthService } from "@/services/user-auth-service";
+import { Button, Notice } from "@/components/ui";
 
 function formatPrice(price: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
@@ -66,11 +67,11 @@ export default function CartPage() {
     return (
       <div className="flex min-h-full flex-col items-center justify-center px-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Your Cart</h1>
-          <p className="mt-2 text-sm text-gray-500">Your cart is empty.</p>
+          <h1 className="text-2xl font-bold text-foreground">Your Cart</h1>
+          <p className="mt-2 text-sm text-muted">Your cart is empty.</p>
           <Link
             href="/"
-            className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="mt-4 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
           >
             Browse Products
           </Link>
@@ -80,15 +81,15 @@ export default function CartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12">
-      <h1 className="text-2xl font-bold text-gray-900">Your Cart</h1>
+    <div className="mx-auto max-w-2xl px-6 py-12">
+      <h1 className="text-2xl font-bold text-foreground">Your Cart</h1>
 
-      <ul className="mt-6 divide-y divide-gray-200">
+      <ul className="mt-6 divide-y divide-border">
         {items.map((item) => (
           <li key={item.product.id} className="flex items-center gap-4 py-4">
             <div className="flex-1">
-              <p className="font-medium text-gray-900">{item.product.name}</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium text-foreground">{item.product.name}</p>
+              <p className="text-sm text-muted">
                 {formatPrice(item.product.price, item.product.currency)}
                 {item.product.paymentModel === "recurring" && "/mo"}
               </p>
@@ -99,7 +100,7 @@ export default function CartPage() {
                   onClick={() =>
                     updateQuantity(item.product.id, item.quantity - 1)
                   }
-                  className="rounded border border-gray-300 px-2 py-0.5 text-sm hover:bg-gray-50"
+                  className="rounded border border-border px-2 py-0.5 text-sm hover:bg-surface"
                 >
                   -
                 </button>
@@ -108,13 +109,13 @@ export default function CartPage() {
                   onClick={() =>
                     updateQuantity(item.product.id, item.quantity + 1)
                   }
-                  className="rounded border border-gray-300 px-2 py-0.5 text-sm hover:bg-gray-50"
+                  className="rounded border border-border px-2 py-0.5 text-sm hover:bg-surface"
                 >
                   +
                 </button>
               </div>
             )}
-            <p className="w-24 text-right font-medium text-gray-900">
+            <p className="w-24 text-right font-medium text-foreground">
               {formatPrice(
                 item.product.price * item.quantity,
                 item.product.currency,
@@ -122,7 +123,7 @@ export default function CartPage() {
             </p>
             <button
               onClick={() => removeItem(item.product.id)}
-              className="text-sm text-red-600 hover:text-red-700"
+              className="text-sm text-error hover:text-error"
             >
               Remove
             </button>
@@ -130,9 +131,9 @@ export default function CartPage() {
         ))}
       </ul>
 
-      <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
-        <span className="text-lg font-semibold text-gray-900">Total</span>
-        <span className="text-xl font-bold text-gray-900">
+      <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+        <span className="text-lg font-semibold text-foreground">Total</span>
+        <span className="text-xl font-bold text-foreground">
           {formatPrice(total, "USD")}
         </span>
       </div>
@@ -140,19 +141,13 @@ export default function CartPage() {
       {/* Login required notice for subscriptions */}
       {!isLoggedIn &&
         items.some((item) => item.product.paymentModel === "recurring") && (
-          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="mt-6 rounded-lg border border-warning/20 bg-warning/10 px-4 py-3 text-sm text-warning">
             Your cart contains a subscription. Please{" "}
-            <Link
-              href="/user-login"
-              className="font-medium text-amber-900 underline"
-            >
+            <Link href="/user-login" className="font-medium underline">
               log in
             </Link>{" "}
             or{" "}
-            <Link
-              href="/user-register"
-              className="font-medium text-amber-900 underline"
-            >
+            <Link href="/user-register" className="font-medium underline">
               create an account
             </Link>{" "}
             before proceeding.
@@ -162,39 +157,36 @@ export default function CartPage() {
       {/* Guest one-time info */}
       {!isLoggedIn &&
         !items.some((item) => item.product.paymentModel === "recurring") && (
-          <p className="mt-6 text-sm text-gray-500">
+          <p className="mt-6 text-sm text-muted">
             Checking out as a guest — email and billing details will be
             collected by Stripe. Already have an account?{" "}
-            <Link href="/user-login" className="text-blue-600 hover:underline">
+            <Link href="/user-login" className="text-primary hover:underline">
               Log in
             </Link>
           </p>
         )}
 
       {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div className="mt-4">
+          <Notice message={error} variant="error" />
         </div>
       )}
 
       <div className="mt-6 flex gap-3">
-        <button
+        <Button
           onClick={handleCheckout}
           disabled={loading}
-          className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="flex-1 py-3"
         >
-          {loading ? "Redirecting..." : "Proceed to Checkout"}
-        </button>
-        <button
-          onClick={clearCart}
-          className="rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
+          {loading ? "Redirecting\u2026" : "Proceed to Checkout"}
+        </Button>
+        <Button variant="secondary" onClick={clearCart} className="py-3">
           Clear Cart
-        </button>
+        </Button>
       </div>
 
       <div className="mt-4 text-center">
-        <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href="/" className="text-sm text-muted hover:text-foreground">
           &larr; Continue Shopping
         </Link>
       </div>

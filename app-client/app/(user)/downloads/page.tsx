@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { downloadService } from "@/services/download-service";
+import { PageHeader, EmptyState } from "@/components/ui";
 import type { PurchaseDownload } from "@/types";
 
 function formatSize(bytes: number): string {
@@ -32,63 +33,56 @@ export default function DownloadsPage() {
   }, []);
 
   if (loading) {
-    return <p className="text-sm text-gray-400">Loading downloads&hellip;</p>;
+    return <p className="text-sm text-muted">Loading downloads&hellip;</p>;
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Downloads</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Access files from your purchased products.
-        </p>
-      </div>
+      <PageHeader
+        title="Downloads"
+        description="Access files from your purchased products."
+      />
 
       {downloads.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-6 py-12 text-center">
-          <p className="text-sm text-gray-500">
-            No downloadable files yet. Purchase a digital product to see your
-            files here.
-          </p>
-        </div>
+        <EmptyState message="No downloadable files yet. Purchase a digital product to see your files here." />
       ) : (
         <div className="space-y-4">
           {downloads.map((dl) => (
             <div
               key={dl.purchaseId}
-              className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
+              className="rounded-xl border border-border bg-background p-5 shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">
+                  <h3 className="text-sm font-semibold text-foreground">
                     {dl.productName}
                   </h3>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted">
                     Purchased {formatDate(dl.purchaseDate)}
                   </p>
                 </div>
-                <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                <span className="inline-block rounded bg-surface px-2 py-0.5 text-xs text-muted">
                   {dl.productType}
                 </span>
               </div>
 
-              <ul className="mt-3 divide-y divide-gray-100">
+              <ul className="mt-3 divide-y divide-border">
                 {dl.files.map((file) => (
                   <li
                     key={file.id}
                     className="flex items-center justify-between py-2"
                   >
                     <div>
-                      <p className="text-sm font-medium text-gray-800">
+                      <p className="text-sm font-medium text-foreground">
                         {file.fileName}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-muted">
                         {file.mimeType} &middot; {formatSize(file.sizeBytes)}
                       </p>
                     </div>
                     <a
                       href={downloadService.getDownloadUrl(file.id)}
-                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                      className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
                     >
                       Download
                     </a>

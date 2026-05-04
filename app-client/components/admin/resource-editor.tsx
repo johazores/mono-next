@@ -59,7 +59,7 @@ export function ResourceEditor({
     >
       {sections.length > 1 && (
         <div
-          className="flex gap-1 border-b border-gray-200 mb-4"
+          className="flex gap-1 border-b border-border mb-4"
           role="tablist"
           aria-label={`${title} editor sections`}
         >
@@ -71,8 +71,8 @@ export function ResourceEditor({
               aria-selected={activeSection === section}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeSection === section
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted hover:text-foreground"
               }`}
               onClick={() => setActiveSection(section)}
             >

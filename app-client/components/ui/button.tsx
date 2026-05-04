@@ -1,9 +1,12 @@
 import type { ButtonVariant, ButtonProps } from "@/types";
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
-  secondary: "border border-gray-300 text-gray-700 hover:bg-gray-50",
-  danger: "border border-red-200 text-red-600 hover:bg-red-50",
+  primary:
+    "bg-primary text-white shadow-sm hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50",
+  secondary:
+    "border border-border text-foreground shadow-sm hover:bg-surface active:scale-[0.98]",
+  danger:
+    "border border-error/20 text-error shadow-sm hover:bg-error/5 active:scale-[0.98]",
 };
 
 const sizeStyles = {

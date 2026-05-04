@@ -1,6 +1,5 @@
 import type { ResourceListProps } from "@/types";
-import { Button } from "@/components/ui";
-import { StatusBadge } from "@/components/ui";
+import { Button, StatusBadge, EmptyState } from "@/components/ui";
 
 export function ResourceList({
   items,
@@ -12,13 +11,13 @@ export function ResourceList({
   renderItemActions,
 }: ResourceListProps) {
   if (loading) {
-    return <p className="text-sm text-gray-500 py-8 text-center">Loading...</p>;
+    return (
+      <p className="py-8 text-center text-sm text-muted">Loading&hellip;</p>
+    );
   }
 
   if (items.length === 0) {
-    return (
-      <p className="text-sm text-gray-500 py-8 text-center">No records yet.</p>
-    );
+    return <EmptyState message="No records yet." />;
   }
 
   return (
@@ -26,20 +25,23 @@ export function ResourceList({
       {items.map((item) => (
         <article
           key={item.id}
-          className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+          className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-4 shadow-sm"
         >
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900 truncate">
+            <h3 className="text-sm font-semibold text-foreground truncate">
               {getTitle(item)}
             </h3>
             {getSubtitle && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">
+              <p className="text-xs text-muted mt-0.5 truncate">
                 {getSubtitle(item)}
               </p>
             )}
             {item.status && (
               <div className="mt-1.5">
-                <StatusBadge status={item.status} />
+                <StatusBadge
+                  status={item.status}
+                  variant={item.status === "active" ? "success" : "muted"}
+                />
               </div>
             )}
           </div>

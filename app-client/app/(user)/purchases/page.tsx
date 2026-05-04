@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { purchaseService } from "@/services/purchase-service";
 import type { Product, Purchase } from "@/types";
-import { Button, Modal, Notice } from "@/components/ui";
+import {
+  Button,
+  Modal,
+  Notice,
+  PageHeader,
+  StatusBadge,
+  EmptyState,
+} from "@/components/ui";
 
 export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -65,60 +72,58 @@ export default function PurchasesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchases</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Your purchase history and available products.
-          </p>
-        </div>
-        <Button onClick={openStore}>Browse Products</Button>
-      </div>
+      <PageHeader
+        title="Purchases"
+        description="Your purchase history and available products."
+        action={<Button onClick={openStore}>Browse Products</Button>}
+      />
 
       {message && <Notice message={message.text} variant={message.type} />}
 
-      {loading && <p className="text-sm text-gray-400">Loading&hellip;</p>}
+      {loading && <p className="text-sm text-muted">Loading&hellip;</p>}
 
       {!loading && purchases.length === 0 && (
-        <p className="text-sm text-gray-500">No purchases yet.</p>
+        <EmptyState message="No purchases yet." />
       )}
 
       {purchases.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-hidden rounded-xl border border-border bg-background">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                   Product
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                   Amount
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                   Date
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {purchases.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3 text-sm text-gray-900">
+                <tr
+                  key={p.id}
+                  className="transition-colors hover:bg-surface/60"
+                >
+                  <td className="px-4 py-3 text-sm text-foreground">
                     {p.product?.name ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
+                  <td className="px-4 py-3 text-sm text-foreground">
                     ${p.amount.toFixed(2)} {p.currency}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <span
-                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${p.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}
-                    >
-                      {p.status}
-                    </span>
+                    <StatusBadge
+                      status={p.status}
+                      variant={p.status === "completed" ? "success" : "warning"}
+                    />
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-muted">
                     {new Date(p.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
@@ -141,16 +146,16 @@ export default function PurchasesPage() {
         >
           <div className="space-y-3">
             {products.length === 0 && (
-              <p className="text-sm text-gray-400">No products available.</p>
+              <p className="text-sm text-muted">No products available.</p>
             )}
             {products.map((prod) => (
               <div
                 key={prod.id}
-                className="flex items-center justify-between rounded-lg border border-gray-200 p-4"
+                className="flex items-center justify-between rounded-lg border border-border p-4"
               >
                 <div>
-                  <p className="font-medium text-gray-900">{prod.name}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-foreground">{prod.name}</p>
+                  <p className="text-sm text-muted">
                     {prod.description || prod.type} · ${prod.price.toFixed(2)}{" "}
                     {prod.currency}
                   </p>

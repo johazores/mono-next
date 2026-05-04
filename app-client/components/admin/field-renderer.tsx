@@ -10,7 +10,7 @@ function formatDateInput(value: unknown) {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
+  "w-full rounded-lg border border-border px-3 py-2 text-sm text-foreground placeholder-muted shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 
 export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
   const displayValue = value == null ? "" : String(value);
@@ -30,7 +30,7 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
   if (field.type === "textarea") {
     return (
       <label className={`grid gap-1.5 ${wrapperClass || "col-span-2"}`}>
-        <span className="text-sm font-medium text-gray-700">{field.label}</span>
+        <span className="text-sm font-medium text-foreground">{field.label}</span>
         <textarea
           className={`${inputClass} resize-y`}
           value={displayValue}
@@ -38,7 +38,7 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
           onChange={(e) => onChange(e.target.value)}
         />
         {field.help && (
-          <span className="text-xs text-gray-500">{field.help}</span>
+          <span className="text-xs text-muted">{field.help}</span>
         )}
       </label>
     );
@@ -47,7 +47,7 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
   if (field.type === "select") {
     return (
       <label className={`grid gap-1.5 ${wrapperClass}`}>
-        <span className="text-sm font-medium text-gray-700">{field.label}</span>
+        <span className="text-sm font-medium text-foreground">{field.label}</span>
         <select
           className={inputClass}
           value={displayValue}
@@ -61,7 +61,7 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
           ))}
         </select>
         {field.help && (
-          <span className="text-xs text-gray-500">{field.help}</span>
+          <span className="text-xs text-muted">{field.help}</span>
         )}
       </label>
     );
@@ -69,7 +69,7 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
 
   return (
     <label className={`grid gap-1.5 ${wrapperClass}`}>
-      <span className="text-sm font-medium text-gray-700">{field.label}</span>
+      <span className="text-sm font-medium text-foreground">{field.label}</span>
       <input
         type={field.type}
         className={inputClass}
@@ -81,7 +81,7 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
         }
       />
       {field.help && (
-        <span className="text-xs text-gray-500">{field.help}</span>
+        <span className="text-xs text-muted">{field.help}</span>
       )}
     </label>
   );
@@ -166,36 +166,36 @@ function CheckboxesField({
 
   return (
     <div className={`grid gap-1.5 ${wrapperClass || "col-span-2"}`}>
-      <span className="text-sm font-medium text-gray-700">{field.label}</span>
+      <span className="text-sm font-medium text-foreground">{field.label}</span>
       {field.help && (
-        <span className="text-xs text-gray-500">{field.help}</span>
+        <span className="text-xs text-muted">{field.help}</span>
       )}
       {loadingOpts && (
-        <span className="text-xs text-gray-400">Loading&hellip;</span>
+        <span className="text-xs text-muted">Loading&hellip;</span>
       )}
-      <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+      <div className="max-h-56 overflow-y-auto rounded-lg border border-border bg-background">
         {Object.entries(grouped).map(([cat, items]) => (
           <div key={cat}>
             {Object.keys(grouped).length > 1 && (
-              <div className="sticky top-0 bg-gray-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <div className="sticky top-0 bg-surface px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                 {cat}
               </div>
             )}
             {items.map((opt) => (
               <label
                 key={opt.key}
-                className="flex cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-gray-50"
+                className="flex cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-surface"
               >
                 <input
                   type="checkbox"
                   checked={selected.has(opt.key)}
                   onChange={() => toggle(opt.key)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                 />
-                <span className="min-w-0 text-sm text-gray-800">
+                <span className="min-w-0 text-sm text-foreground">
                   {opt.description || opt.key}
                 </span>
-                <span className="ml-auto shrink-0 text-xs text-gray-400">
+                <span className="ml-auto shrink-0 text-xs text-muted">
                   {opt.key}
                 </span>
               </label>
@@ -203,13 +203,13 @@ function CheckboxesField({
           </div>
         ))}
         {!loadingOpts && options.length === 0 && (
-          <p className="px-3 py-2 text-xs text-gray-400">
+          <p className="px-3 py-2 text-xs text-muted">
             No features available.
           </p>
         )}
       </div>
       {selected.size > 0 && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted">
           {selected.size} selected: {Array.from(selected).join(", ")}
         </p>
       )}

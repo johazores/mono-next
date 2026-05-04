@@ -1,1 +1,67 @@
 @import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Design tokens — CSS custom properties set at runtime by             */
+/* SiteConfigProvider. Defaults here match the seed values.            */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --theme-primary: #2563eb;
+  --theme-primary-hover: #1d4ed8;
+  --theme-accent: #7c3aed;
+  --theme-background: #ffffff;
+  --theme-surface: #f9fafb;
+  --theme-border: #e5e7eb;
+  --theme-text: #111827;
+  --theme-text-muted: #6b7280;
+  --theme-success: #16a34a;
+  --theme-error: #dc2626;
+  --theme-warning: #d97706;
+  --theme-info: #2563eb;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tailwind v4 @theme — maps CSS vars into utility classes             */
+/* e.g. bg-primary, text-primary, border-surface, etc.                */
+/* ------------------------------------------------------------------ */
+
+@theme {
+  --color-primary: var(--theme-primary);
+  --color-primary-hover: var(--theme-primary-hover);
+  --color-accent: var(--theme-accent);
+  --color-background: var(--theme-background);
+  --color-surface: var(--theme-surface);
+  --color-border: var(--theme-border);
+  --color-foreground: var(--theme-text);
+  --color-muted: var(--theme-text-muted);
+  --color-success: var(--theme-success);
+  --color-error: var(--theme-error);
+  --color-warning: var(--theme-warning);
+  --color-info: var(--theme-info);
+}
+
+/* ------------------------------------------------------------------ */
+/* Global polish                                                       */
+/* ------------------------------------------------------------------ */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth focus outline for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skeleton loading shimmer animation */
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}

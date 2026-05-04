@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { userAuthService } from "@/services/user-auth-service";
 import { billingService } from "@/services/billing-service";
+import {
+  PageHeader,
+  FormSection,
+  FormField,
+  Notice,
+  Button,
+} from "@/components/ui";
 import type { AppUser, UpdateUserProfileInput, BillingStatus } from "@/types";
 
 export default function AccountPage() {
@@ -142,120 +149,83 @@ export default function AccountPage() {
   if (!user) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-gray-400">Loading&hellip;</p>
+        <p className="text-sm text-muted">Loading&hellip;</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Account</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage your profile and subscription details.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Account"
+        description="Manage your profile and subscription details."
+      />
 
       {message && (
-        <div
-          className={`rounded-lg px-4 py-3 text-sm ${
-            message.type === "success"
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
-          {message.text}
-        </div>
+        <Notice
+          message={message.text}
+          variant={message.type === "success" ? "success" : "error"}
+        />
       )}
 
       {/* Profile */}
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
-        <form onSubmit={handleProfileSave} className="mt-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+      <FormSection title="Profile">
+        <form onSubmit={handleProfileSave} className="space-y-4">
+          <FormField
+            label="Name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <FormField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Button type="submit" disabled={saving}>
             {saving ? "Saving\u2026" : "Save Changes"}
-          </button>
+          </Button>
         </form>
-      </section>
+      </FormSection>
 
       {/* Change Password */}
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Change Password</h2>
-        <form onSubmit={handlePasswordSave} className="mt-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Current Password
-            </label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              New Password
-            </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+      <FormSection title="Change Password">
+        <form onSubmit={handlePasswordSave} className="space-y-4">
+          <FormField
+            label="Current Password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+          <FormField
+            label="New Password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <Button type="submit" disabled={saving}>
             {saving ? "Updating\u2026" : "Update Password"}
-          </button>
+          </Button>
         </form>
-      </section>
+      </FormSection>
 
       {/* Subscription */}
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Subscription</h2>
+      <section className="rounded-xl border border-border bg-background p-6">
+        <h2 className="text-lg font-semibold text-foreground">Subscription</h2>
 
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-sm font-medium text-gray-500">Current Plan</dt>
+            <dt className="text-sm font-medium text-muted">Current Plan</dt>
             <dd className="mt-1">
-              <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+              <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 {user.activePlan?.name ?? "Free"}
               </span>
             </dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-gray-500">Renews</dt>
-            <dd className="mt-1 text-sm text-gray-900">
+            <dt className="text-sm font-medium text-muted">Renews</dt>
+            <dd className="mt-1 text-sm text-foreground">
               {user.activePlan?.endDate
                 ? new Date(user.activePlan.endDate).toLocaleDateString()
                 : "N/A"}
@@ -265,29 +235,29 @@ export default function AccountPage() {
       </section>
 
       {/* Billing */}
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
+      <section className="rounded-xl border border-border bg-background p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Billing</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <h2 className="text-lg font-semibold text-foreground">Billing</h2>
+            <p className="mt-1 text-sm text-muted">
               Manage your payment methods, view invoices, and update your
               subscription through Stripe.
             </p>
           </div>
           {billing?.hasStripeCustomer && (
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleSync}
               disabled={syncing}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               {syncing ? "Syncing\u2026" : "Sync from Stripe"}
-            </button>
+            </Button>
           )}
         </div>
 
         {billingLoading ? (
-          <p className="mt-4 text-sm text-gray-400">
+          <p className="mt-4 text-sm text-muted">
             Loading billing info&hellip;
           </p>
         ) : billing?.hasStripeCustomer ? (
@@ -295,54 +265,57 @@ export default function AccountPage() {
             {/* Subscriptions */}
             {billing.subscriptions.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-gray-700">
+                <h3 className="text-sm font-medium text-foreground">
                   Subscriptions
                 </h3>
-                <div className="mt-2 overflow-hidden rounded-lg border border-gray-200 text-sm">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <div className="mt-2 overflow-hidden rounded-xl border border-border text-sm">
+                  <table className="min-w-full divide-y divide-border">
+                    <thead className="bg-surface">
                       <tr>
-                        <th className="px-4 py-2 text-left font-medium text-gray-600">
+                        <th className="px-4 py-2 text-left font-medium text-muted">
                           ID
                         </th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-600">
+                        <th className="px-4 py-2 text-left font-medium text-muted">
                           Status
                         </th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-600">
+                        <th className="px-4 py-2 text-left font-medium text-muted">
                           Current Period End
                         </th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-600">
+                        <th className="px-4 py-2 text-left font-medium text-muted">
                           Auto-Renew
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
+                    <tbody className="divide-y divide-border bg-background">
                       {billing.subscriptions.map((sub) => (
-                        <tr key={sub.id}>
-                          <td className="px-4 py-2 font-mono text-xs text-gray-500">
+                        <tr
+                          key={sub.id}
+                          className="transition-colors hover:bg-surface/60"
+                        >
+                          <td className="px-4 py-2 font-mono text-xs text-muted">
                             {sub.id.slice(0, 20)}&hellip;
                           </td>
                           <td className="px-4 py-2">
                             <span
                               className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                                 sub.status === "active"
-                                  ? "bg-green-100 text-green-700"
+                                  ? "bg-success/10 text-success"
                                   : sub.status === "trialing"
-                                    ? "bg-blue-100 text-blue-700"
+                                    ? "bg-primary/10 text-primary"
                                     : sub.status === "canceled"
-                                      ? "bg-red-100 text-red-600"
-                                      : "bg-gray-100 text-gray-600"
+                                      ? "bg-error/10 text-error"
+                                      : "bg-surface text-muted"
                               }`}
                             >
                               {sub.status}
                             </span>
                           </td>
-                          <td className="px-4 py-2 text-gray-700">
+                          <td className="px-4 py-2 text-foreground">
                             {new Date(
                               sub.currentPeriodEnd * 1000,
                             ).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-2 text-gray-700">
+                          <td className="px-4 py-2 text-foreground">
                             {sub.cancelAtPeriodEnd
                               ? "No (cancels at end)"
                               : "Yes"}
@@ -358,32 +331,37 @@ export default function AccountPage() {
             {/* Invoices */}
             {billing.invoices && billing.invoices.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-gray-700">Invoices</h3>
-                <div className="mt-2 overflow-hidden rounded-lg border border-gray-200 text-sm">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <h3 className="text-sm font-medium text-foreground">
+                  Invoices
+                </h3>
+                <div className="mt-2 overflow-hidden rounded-xl border border-border text-sm">
+                  <table className="min-w-full divide-y divide-border">
+                    <thead className="bg-surface">
                       <tr>
-                        <th className="px-4 py-2 text-left font-medium text-gray-600">
+                        <th className="px-4 py-2 text-left font-medium text-muted">
                           Date
                         </th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-600">
+                        <th className="px-4 py-2 text-left font-medium text-muted">
                           Amount
                         </th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-600">
+                        <th className="px-4 py-2 text-left font-medium text-muted">
                           Status
                         </th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-600">
+                        <th className="px-4 py-2 text-left font-medium text-muted">
                           Invoice
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
+                    <tbody className="divide-y divide-border bg-background">
                       {billing.invoices.map((inv) => (
-                        <tr key={inv.id}>
-                          <td className="px-4 py-2 text-gray-700">
+                        <tr
+                          key={inv.id}
+                          className="transition-colors hover:bg-surface/60"
+                        >
+                          <td className="px-4 py-2 text-foreground">
                             {new Date(inv.created * 1000).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-2 text-gray-900 font-medium">
+                          <td className="px-4 py-2 text-foreground font-medium">
                             {inv.currency}{" "}
                             {inv.amountPaid.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
@@ -394,12 +372,12 @@ export default function AccountPage() {
                             <span
                               className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                                 inv.status === "paid"
-                                  ? "bg-green-100 text-green-700"
+                                  ? "bg-success/10 text-success"
                                   : inv.status === "open"
-                                    ? "bg-yellow-100 text-yellow-700"
+                                    ? "bg-warning/10 text-warning"
                                     : inv.status === "void"
-                                      ? "bg-red-100 text-red-600"
-                                      : "bg-gray-100 text-gray-600"
+                                      ? "bg-error/10 text-error"
+                                      : "bg-surface text-muted"
                               }`}
                             >
                               {inv.status}
@@ -411,7 +389,7 @@ export default function AccountPage() {
                                 href={inv.hostedUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline"
+                                className="text-primary hover:underline"
                               >
                                 View
                               </a>
@@ -419,20 +397,20 @@ export default function AccountPage() {
                             {inv.pdfUrl && (
                               <>
                                 {inv.hostedUrl && (
-                                  <span className="mx-1 text-gray-300">|</span>
+                                  <span className="mx-1 text-muted">|</span>
                                 )}
                                 <a
                                   href={inv.pdfUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline"
+                                  className="text-primary hover:underline"
                                 >
                                   PDF
                                 </a>
                               </>
                             )}
                             {!inv.hostedUrl && !inv.pdfUrl && (
-                              <span className="text-gray-400">&mdash;</span>
+                              <span className="text-muted">&mdash;</span>
                             )}
                           </td>
                         </tr>
@@ -445,22 +423,17 @@ export default function AccountPage() {
 
             {billing.subscriptions.length === 0 &&
               (!billing.invoices || billing.invoices.length === 0) && (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted">
                   No subscriptions or invoices found on Stripe.
                 </p>
               )}
 
-            <button
-              type="button"
-              onClick={handleManageBilling}
-              disabled={portalLoading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
+            <Button onClick={handleManageBilling} disabled={portalLoading}>
               {portalLoading ? "Redirecting\u2026" : "Manage Billing"}
-            </button>
+            </Button>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-gray-500">
+          <p className="mt-4 text-sm text-muted">
             No billing account linked. A Stripe customer will be created when
             you make your first purchase.
           </p>

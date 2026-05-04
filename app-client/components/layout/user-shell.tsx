@@ -2,17 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { userAuthService } from "@/services/user-auth-service";
-import type { AppUser, NavItem } from "@/types";
+import { useSiteConfig } from "@/components/providers/site-config-provider";
+import type { AppUser } from "@/types";
+import {
+  LayoutDashboard,
+  UserCog,
+  Sparkles,
+  UsersRound,
+  ShoppingBag,
+  Download,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const baseNavigation: NavItem[] = [
-  { label: "Dashboard", href: "/my-account" },
-  { label: "Account", href: "/account" },
-  { label: "Features", href: "/features" },
-  { label: "Sub-Users", href: "/sub-users" },
-  { label: "Purchases", href: "/purchases" },
-  { label: "Downloads", href: "/downloads" },
+type UserNavItem = { label: string; href: string; icon: LucideIcon };
+
+const baseNavigation: UserNavItem[] = [
+  { label: "Dashboard", href: "/my-account", icon: LayoutDashboard },
+  { label: "Account", href: "/account", icon: UserCog },
+  { label: "Features", href: "/features", icon: Sparkles },
+  { label: "Sub-Users", href: "/sub-users", icon: UsersRound },
+  { label: "Purchases", href: "/purchases", icon: ShoppingBag },
+  { label: "Downloads", href: "/downloads", icon: Download },
 ];
 
 export function UserShell({
@@ -23,8 +38,9 @@ export function UserShell({
   user: AppUser;
 }) {
   const pathname = usePathname();
-
   const navigation = baseNavigation;
+  const { title, logo } = useSiteConfig();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
     await userAuthService.logout();
@@ -33,56 +49,139 @@ export function UserShell({
 
   const planName = user.activePlan?.name ?? "Free";
 
+  const initials = (user.name ?? user.email)
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const sidebar = (
+    <>
+      <div className="px-5 py-6">
+        <div className="flex items-center gap-3">
+          {logo ? (
+            <img src={logo} alt={title} className="h-8" />
+          ) : (
+            <h1 className="text-lg font-bold tracking-tight text-foreground">
+              {title}
+            </h1>
+          )}
+        </div>
+        <span className="mt-2 inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+          {planName}
+        </span>
+      </div>
+
+      <p className="mb-2 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+        Navigation
+      </p>
+
+      <nav className="flex-1 px-3">
+        <ul className="grid gap-0.5">
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            const active = pathname === item.href;
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                    active
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted hover:bg-surface hover:text-foreground"
+                  }`}
+                >
+                  <Icon
+                    size={18}
+                    className={
+                      active
+                        ? "text-white"
+                        : "text-muted group-hover:text-foreground"
+                    }
+                  />
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="border-t border-border px-4 py-4">
+        <div className="flex items-center gap-3 px-1">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            {initials}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">
+              {user.name}
+            </p>
+            <p className="truncate text-xs text-muted">{user.email}</p>
+          </div>
+        </div>
+        {user.parent && (
+          <p className="mt-2 truncate px-1 text-xs text-muted">
+            Account owner: {user.parent.name}
+          </p>
+        )}
+        <button
+          onClick={handleLogout}
+          className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted transition-colors hover:bg-surface hover:text-foreground"
+        >
+          <LogOut size={16} />
+          Sign out
+        </button>
+      </div>
+    </>
+  );
+
   return (
-    <div className="flex min-h-full">
-      <aside className="hidden w-60 shrink-0 border-r border-gray-200 bg-gray-50 lg:flex lg:flex-col">
-        <div className="px-4 py-6">
-          <h1 className="text-lg font-bold text-gray-900 px-3">mono-next</h1>
-          <span className="mt-1 inline-block rounded-full bg-blue-100 px-3 py-0.5 text-xs font-medium text-blue-700">
-            {planName}
+    <div className="flex min-h-full bg-surface/50">
+      {/* Desktop sidebar */}
+      <aside className="hidden w-60 shrink-0 border-r border-border bg-background lg:flex lg:flex-col">
+        {sidebar}
+      </aside>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-background shadow-xl transition-transform duration-200 lg:hidden ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="absolute right-3 top-5 rounded-lg p-1 text-muted hover:text-foreground"
+        >
+          <X size={20} />
+        </button>
+        {sidebar}
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto">
+        {/* Mobile top bar */}
+        <div className="flex items-center border-b border-border bg-background px-4 py-3 lg:hidden">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="rounded-lg p-1.5 text-muted hover:bg-surface hover:text-foreground"
+          >
+            <Menu size={22} />
+          </button>
+          <span className="ml-3 text-sm font-semibold text-foreground">
+            {title}
           </span>
         </div>
-        <nav className="flex-1 px-4">
-          <ul className="grid gap-1">
-            {navigation.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-        <div className="border-t border-gray-200 px-4 py-4">
-          <p className="truncate px-3 text-sm font-medium text-gray-700">
-            {user.name}
-          </p>
-          <p className="truncate px-3 text-xs text-gray-400">{user.email}</p>
-          {user.parent && (
-            <p className="mt-1 truncate px-3 text-xs text-gray-400">
-              Account owner: {user.parent.name}
-            </p>
-          )}
-          <button
-            onClick={handleLogout}
-            className="mt-2 w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100"
-          >
-            Sign out
-          </button>
-        </div>
-      </aside>
-      <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-5xl px-6 py-8">{children}</div>
+        <div className="px-6 py-8 lg:px-10">{children}</div>
       </main>
     </div>
   );
