@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import useSWR from "swr";
+import { swrListFetcher } from "@/lib/swr";
 import { purchaseService } from "@/services/purchase-service";
 import type { Product, Purchase } from "@/types";
 import {
@@ -13,26 +15,20 @@ import {
 } from "@/components/ui";
 
 export default function PurchasesPage() {
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const {
+    data: purchases = [],
+    isLoading: loading,
+    mutate: mutatePurchases,
+  } = useSWR("/api/users/auth/purchases", (url: string) =>
+    swrListFetcher<Purchase>(url),
+  );
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showStore, setShowStore] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
-
-  const loadPurchases = useCallback(async () => {
-    try {
-      const items = await purchaseService.listPurchases();
-      setPurchases(items);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const loadProducts = useCallback(async () => {
     try {
@@ -42,10 +38,6 @@ export default function PurchasesPage() {
       // silent
     }
   }, []);
-
-  useEffect(() => {
-    loadPurchases();
-  }, [loadPurchases]);
 
   function openStore() {
     loadProducts();
@@ -59,7 +51,7 @@ export default function PurchasesPage() {
       await purchaseService.buy(productId);
       setMessage({ type: "success", text: "Purchase completed!" });
       setShowStore(false);
-      loadPurchases();
+      mutatePurchases();
     } catch (err) {
       setMessage({
         type: "error",

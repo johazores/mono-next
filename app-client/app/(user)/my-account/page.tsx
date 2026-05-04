@@ -1,12 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import useSWR from "swr";
+import { swrFetcher, swrListFetcher, swrFeatureFetcher } from "@/lib/swr";
 import { PageHeader, StatCard, DashboardCard } from "@/components/ui";
-import { userAuthService } from "@/services/user-auth-service";
-import { getMyFeatures } from "@/services/feature-service";
-import { purchaseService } from "@/services/purchase-service";
-import { downloadService } from "@/services/download-service";
-import type { AppUser, FeatureFlag, Purchase, PurchaseDownload } from "@/types";
+import type { AppUser, Purchase, PurchaseDownload } from "@/types";
 import {
   UserCog,
   Sparkles,
@@ -18,35 +15,25 @@ import {
 } from "lucide-react";
 
 export default function MyAccountPage() {
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [features, setFeatures] = useState<FeatureFlag[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [downloads, setDownloads] = useState<PurchaseDownload[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: user, isLoading: userLoading } = useSWR<AppUser>(
+    "/api/users/auth/profile",
+    swrFetcher,
+  );
+  const { data: features = [], isLoading: featuresLoading } = useSWR(
+    "/api/users/auth/features",
+    swrFeatureFetcher,
+  );
+  const { data: purchases = [], isLoading: purchasesLoading } = useSWR(
+    "/api/users/auth/purchases",
+    (url: string) => swrListFetcher<Purchase>(url),
+  );
+  const { data: downloads = [], isLoading: downloadsLoading } = useSWR(
+    "/api/users/auth/downloads",
+    (url: string) => swrListFetcher<PurchaseDownload>(url),
+  );
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [u, f, p, d] = await Promise.all([
-        userAuthService.getProfile(),
-        getMyFeatures(),
-        purchaseService.listPurchases(),
-        downloadService.listDownloads(),
-      ]);
-      if (u.ok && u.data) setUser(u.data);
-      if (f) setFeatures(f);
-      if (p) setPurchases(p);
-      if (d) setDownloads(d);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const loading =
+    userLoading || featuresLoading || purchasesLoading || downloadsLoading;
 
   const planName = user?.activePlan?.name ?? "Free";
   const endDate = user?.activePlan?.endDate

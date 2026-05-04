@@ -33,8 +33,9 @@ components/
   auth/            AuthConfigProvider, ClerkSignIn, ClerkSignUp
   layout/          AdminShell, UserShell (sidebar navigation, auth info, logout)
   ui/              Button, Modal, Notice, StatusBadge
-hooks/             useAdminResource (polling data hook)
-services/          API client, auth service, user auth service, resource service, feature service, sub-user service, purchase service, report service, activity log service, setting service, admin setting service
+hooks/             useAdminAuth, useUserAuth (SWR-cached auth), useAdminResource (SWR-polled data), useFeatures, useCart
+lib/               SWR fetchers (swrFetcher, swrListFetcher, swrFeatureFetcher)
+services/          API client, auth service, user auth service, resource service, sub-user service, purchase service, report service, activity log service, admin setting service
 types/             ApiResult, ResourceField, ResourceItem, AuthProvider, PublicAuthConfig
 ```
 
@@ -42,8 +43,8 @@ types/             ApiResult, ResourceField, ResourceItem, AuthProvider, PublicA
 
 Two separate auth guards protect different route groups:
 
-- **Admin** (`(admin)/layout.tsx`): Checks `/api/panel/me`. Redirects to `/login`.
-- **User** (`(user)/layout.tsx`): Checks `/api/users/auth/me`. Redirects to `/user-login`.
+- **Admin** (`(admin)/layout.tsx`): Uses `useAdminAuth()` hook (SWR-cached `/api/panel/me` with 30s dedup). Redirects to `/login`.
+- **User** (`(user)/layout.tsx`): Uses `useUserAuth()` hook (SWR-cached `/api/users/auth/me` with 30s dedup). Redirects to `/user-login`.
 
 User authentication supports dual providers (credentials or Clerk) based on
 the `SiteSetting` configuration. The `AuthConfigProvider` context fetches the

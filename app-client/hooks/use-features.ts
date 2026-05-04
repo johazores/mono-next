@@ -1,39 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { getMyFeatures } from "@/services/feature-service";
-import type { FeaturesState } from "@/types";
+import { useCallback } from "react";
+import useSWR from "swr";
+import { swrFeatureFetcher } from "@/lib/swr";
 
 export function useFeatures() {
-  const [state, setState] = useState<FeaturesState>({
-    features: [],
-    loading: true,
-    error: "",
-  });
+  const { data, error, isLoading, mutate } = useSWR(
+    "/api/users/auth/features",
+    swrFeatureFetcher,
+  );
 
-  const load = useCallback(async () => {
-    try {
-      const features = await getMyFeatures();
-      setState({ features, loading: false, error: "" });
-    } catch (err) {
-      setState((current) => ({
-        ...current,
-        loading: false,
-        error: err instanceof Error ? err.message : "Failed to load features.",
-      }));
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const features = data ?? [];
 
   const hasFeature = useCallback(
     (key: string): boolean => {
-      return state.features.some((f) => f.key === key && f.enabled);
+      return features.some((f) => f.key === key && f.enabled);
     },
-    [state.features],
+    [features],
   );
 
-  return { ...state, hasFeature, reload: load };
+  return {
+    features,
+    loading: isLoading,
+    error: error instanceof Error ? error.message : error ? String(error) : "",
+    hasFeature,
+    reload: () => mutate(),
+  };
 }

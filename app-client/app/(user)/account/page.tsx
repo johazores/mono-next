@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import useSWR from "swr";
+import { swrFetcher } from "@/lib/swr";
 import { userAuthService } from "@/services/user-auth-service";
 import { billingService } from "@/services/billing-service";
 import {
@@ -12,8 +14,22 @@ import {
 } from "@/components/ui";
 import type { AppUser, UpdateUserProfileInput, BillingStatus } from "@/types";
 
+async function billingFetcher(): Promise<BillingStatus> {
+  return billingService.getStatus();
+}
+
 export default function AccountPage() {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const {
+    data: user,
+    mutate: mutateUser,
+    isLoading: userLoading,
+  } = useSWR<AppUser>("/api/users/auth/profile", swrFetcher);
+  const {
+    data: billing,
+    mutate: mutateBilling,
+    isLoading: billingLoading,
+  } = useSWR("billing-status", billingFetcher);
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -23,25 +39,16 @@ export default function AccountPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const [billing, setBilling] = useState<BillingStatus | null>(null);
-  const [billingLoading, setBillingLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
+  // Sync form fields when user data loads
   useEffect(() => {
-    userAuthService.getProfile().then((res) => {
-      if (res.ok && res.data) {
-        setUser(res.data);
-        setName(res.data.name);
-        setEmail(res.data.email);
-      }
-    });
-    billingService
-      .getStatus()
-      .then(setBilling)
-      .catch(() => {})
-      .finally(() => setBillingLoading(false));
-  }, []);
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+  }, [user]);
 
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
@@ -61,7 +68,7 @@ export default function AccountPage() {
     try {
       const res = await userAuthService.updateProfile(input);
       if (res.ok && res.data) {
-        setUser(res.data);
+        mutateUser(res.data, false);
         setMessage({ type: "success", text: "Profile updated." });
       }
     } catch (err) {
@@ -130,8 +137,7 @@ export default function AccountPage() {
     try {
       const result = await billingService.syncPurchases();
       // Refresh billing data after sync
-      const updated = await billingService.getStatus();
-      setBilling(updated);
+      mutateBilling();
       setMessage({
         type: "success",
         text: `Synced ${result.synced} record${result.synced !== 1 ? "s" : ""} from Stripe.`,
@@ -146,7 +152,7 @@ export default function AccountPage() {
     }
   }
 
-  if (!user) {
+  if (userLoading || !user) {
     return (
       <div className="flex items-center justify-center py-12">
         <p className="text-sm text-muted">Loading&hellip;</p>

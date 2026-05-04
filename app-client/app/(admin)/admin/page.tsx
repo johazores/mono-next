@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import useSWR from "swr";
+import { swrFetcher } from "@/lib/swr";
 import { PageHeader, StatCard, DashboardCard } from "@/components/ui";
-import { reportService } from "@/services/report-service";
-import { activityLogService } from "@/services/activity-log-service";
-import type { AdminReport, ActivityLogEntry } from "@/types";
+import type { AdminReport, ActivityLogList } from "@/types";
 import {
   DollarSign,
   Users,
@@ -18,29 +17,15 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const [report, setReport] = useState<AdminReport | null>(null);
-  const [recentActivity, setRecentActivity] = useState<ActivityLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: report, isLoading: reportLoading } = useSWR<AdminReport>(
+    "/api/admins/reports?period=30d",
+    swrFetcher,
+  );
+  const { data: activity, isLoading: activityLoading } =
+    useSWR<ActivityLogList>("/api/activity-logs?limit=5", swrFetcher);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [r, a] = await Promise.all([
-        reportService.get("30d"),
-        activityLogService.list({ limit: "5" }),
-      ]);
-      if (r) setReport(r);
-      if (a.ok && a.data) setRecentActivity(a.data.items);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const loading = reportLoading || activityLoading;
+  const recentActivity = activity?.items ?? [];
 
   return (
     <div className="space-y-8">

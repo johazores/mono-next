@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/layout/admin-shell";
-import { authService } from "@/services/auth-service";
-import type { AuthUser } from "@/types";
+import { useAdminAuth } from "@/hooks/use-auth";
 
 export default function AdminLayout({
   children,
@@ -12,24 +11,15 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   const router = useRouter();
-  const [admin, setAdmin] = useState<AuthUser | null>(null);
-  const [checked, setChecked] = useState(false);
+  const { admin, error, isLoading } = useAdminAuth();
 
   useEffect(() => {
-    authService
-      .me()
-      .then((res) => {
-        if (res.ok && res.data) {
-          setAdmin(res.data);
-        } else {
-          router.replace("/login");
-        }
-      })
-      .catch(() => router.replace("/login"))
-      .finally(() => setChecked(true));
-  }, [router]);
+    if (!isLoading && (error || !admin)) {
+      router.replace("/login");
+    }
+  }, [isLoading, error, admin, router]);
 
-  if (!checked) {
+  if (isLoading) {
     return (
       <div className="flex min-h-full items-center justify-center">
         <p className="text-sm text-muted">Loading&hellip;</p>

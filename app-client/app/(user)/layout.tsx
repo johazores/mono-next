@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { UserShell } from "@/components/layout/user-shell";
-import { userAuthService } from "@/services/user-auth-service";
+import { useUserAuth } from "@/hooks/use-auth";
 import { useAuthConfig } from "@/components/auth/auth-config-provider";
-import type { AppUser } from "@/types";
 
 export default function UserLayout({
   children,
@@ -14,26 +13,15 @@ export default function UserLayout({
 }>) {
   const router = useRouter();
   const { ready } = useAuthConfig();
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [checked, setChecked] = useState(false);
+  const { user, error, isLoading } = useUserAuth(ready);
 
   useEffect(() => {
-    if (!ready) return;
+    if (ready && !isLoading && (error || !user)) {
+      router.replace("/user-login");
+    }
+  }, [ready, isLoading, error, user, router]);
 
-    userAuthService
-      .me()
-      .then((res) => {
-        if (res.ok && res.data) {
-          setUser(res.data);
-        } else {
-          router.replace("/user-login");
-        }
-      })
-      .catch(() => router.replace("/user-login"))
-      .finally(() => setChecked(true));
-  }, [router, ready]);
-
-  if (!checked) {
+  if (!ready || isLoading) {
     return (
       <div className="flex min-h-full items-center justify-center">
         <p className="text-sm text-muted">Loading&hellip;</p>

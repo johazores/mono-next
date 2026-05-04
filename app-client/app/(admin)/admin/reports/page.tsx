@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { reportService } from "@/services/report-service";
+import { useState } from "react";
+import useSWR from "swr";
+import { swrFetcher } from "@/lib/swr";
 import { PageHeader, StatCard } from "@/components/ui";
 import type { AdminReport, ReportPeriod } from "@/types";
 import { DollarSign, ArrowLeftRight, Users, UserPlus } from "lucide-react";
@@ -15,24 +16,10 @@ const periods = [
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<ReportPeriod>("30d");
-  const [report, setReport] = useState<AdminReport | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await reportService.get(period);
-      setReport(data);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }, [period]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data: report, isLoading: loading } = useSWR<AdminReport>(
+    `/api/admins/reports?period=${period}`,
+    swrFetcher,
+  );
 
   return (
     <div className="space-y-6">

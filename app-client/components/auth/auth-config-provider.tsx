@@ -1,20 +1,11 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, type ReactNode } from "react";
+import useSWR from "swr";
 import { ClerkProvider, useAuth } from "@clerk/react";
-import { settingService } from "@/services/setting-service";
+import { swrFetcher } from "@/lib/swr";
 import { setTokenGetter } from "@/services/api-client";
-import type {
-  AuthProvider,
-  PublicAuthConfig,
-  AuthConfigContextValue,
-} from "@/types";
+import type { PublicAuthConfig, AuthConfigContextValue } from "@/types";
 
 const AuthConfigContext = createContext<AuthConfigContextValue>({
   provider: "credentials",
@@ -50,22 +41,13 @@ function ClerkTokenBridge({ children }: { children: ReactNode }) {
 }
 
 export function AuthConfigProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<PublicAuthConfig | null>(null);
+  const { data } = useSWR<PublicAuthConfig>("/api/settings/auth", swrFetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+    errorRetryCount: 1,
+  });
 
-  useEffect(() => {
-    settingService
-      .getAuthConfig()
-      .then((res) => {
-        if (res.ok && res.data) {
-          setConfig(res.data);
-        } else {
-          setConfig({ provider: "credentials", clerkPublishableKey: "" });
-        }
-      })
-      .catch(() => {
-        setConfig({ provider: "credentials", clerkPublishableKey: "" });
-      });
-  }, []);
+  const config = data ?? null;
 
   if (!config) {
     return null;

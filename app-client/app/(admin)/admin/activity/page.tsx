@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { activityLogService } from "@/services/activity-log-service";
+import { useState } from "react";
+import useSWR from "swr";
+import { swrFetcher } from "@/lib/swr";
 import { PageHeader, Button } from "@/components/ui";
-import type { ActivityLogEntry } from "@/types";
+import type { ActivityLogList } from "@/types";
 
 const PAGE_SIZE = 20;
 
@@ -24,40 +25,32 @@ const actionLabels: Record<string, string> = {
   "profile.update": "Profile Updated",
 };
 
+function buildActivityKey(
+  page: number,
+  actionFilter: string,
+  actorFilter: string,
+) {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(PAGE_SIZE),
+  });
+  if (actionFilter) params.set("action", actionFilter);
+  if (actorFilter) params.set("actor", actorFilter);
+  return `/api/activity-logs?${params.toString()}`;
+}
+
 export default function ActivityPage() {
-  const [items, setItems] = useState<ActivityLogEntry[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [actionFilter, setActionFilter] = useState("");
   const [actorFilter, setActorFilter] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    const params: Record<string, string> = {
-      page: String(page),
-      limit: String(PAGE_SIZE),
-    };
-    if (actionFilter) params.action = actionFilter;
-    if (actorFilter) params.actor = actorFilter;
+  const { data, isLoading: loading } = useSWR<ActivityLogList>(
+    buildActivityKey(page, actionFilter, actorFilter),
+    swrFetcher,
+  );
 
-    try {
-      const res = await activityLogService.list(params);
-      if (res.ok && res.data) {
-        setItems(res.data.items);
-        setTotal(res.data.total);
-      }
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }, [page, actionFilter, actorFilter]);
-
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (

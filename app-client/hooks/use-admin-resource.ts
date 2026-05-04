@@ -1,34 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import useSWR from "swr";
 import { resourceService } from "@/services/resource-service";
-import type { AdminResourceState } from "@/types";
 
 export function useAdminResource<T>(endpoint: string) {
-  const [state, setState] = useState<AdminResourceState<T>>({
-    items: [],
-    loading: true,
-    error: "",
-  });
+  const { data, error, isLoading, mutate } = useSWR<T[]>(
+    endpoint,
+    () => resourceService.list<T>(endpoint),
+    {
+      refreshInterval: 30_000,
+      refreshWhenHidden: false,
+      refreshWhenOffline: false,
+      revalidateOnFocus: true,
+      dedupingInterval: 5_000,
+    },
+  );
 
-  const load = useCallback(async () => {
-    try {
-      const items = await resourceService.list<T>(endpoint);
-      setState({ items, loading: false, error: "" });
-    } catch (err) {
-      setState((current) => ({
-        ...current,
-        loading: false,
-        error: err instanceof Error ? err.message : "Failed to load.",
-      }));
-    }
-  }, [endpoint]);
-
-  useEffect(() => {
-    load();
-    const timer = window.setInterval(load, 15000);
-    return () => window.clearInterval(timer);
-  }, [load]);
-
-  return { ...state, reload: load };
+  return {
+    items: data ?? [],
+    loading: isLoading,
+    error: error instanceof Error ? error.message : error ? String(error) : "",
+    reload: () => mutate(),
+  };
 }

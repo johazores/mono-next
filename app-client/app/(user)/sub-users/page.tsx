@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { getMyFeatures } from "@/services/feature-service";
+import { useState } from "react";
+import useSWR from "swr";
+import { swrListFetcher, swrFeatureFetcher } from "@/lib/swr";
 import { subUserService } from "@/services/sub-user-service";
 import type { SubUser, CreateSubUserResult } from "@/types";
 import {
@@ -14,10 +15,23 @@ import {
 } from "@/components/ui";
 
 export default function SubUsersPage() {
-  const [items, setItems] = useState<SubUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [canCreate, setCanCreate] = useState(false);
+  const {
+    data: items = [],
+    isLoading: loading,
+    error: loadError,
+    mutate: mutateItems,
+  } = useSWR("/api/users/auth/sub-users", (url: string) =>
+    swrListFetcher<SubUser>(url),
+  );
+  const { data: features = [] } = useSWR(
+    "/api/users/auth/features",
+    swrFeatureFetcher,
+  );
+
+  const canCreate = features.some(
+    (f) => f.key === "sub-users.create" && f.enabled,
+  );
+
   const [showCreate, setShowCreate] = useState(false);
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
@@ -28,28 +42,11 @@ export default function SubUsersPage() {
   const [createResult, setCreateResult] = useState<CreateSubUserResult | null>(
     null,
   );
-
-  const load = useCallback(async () => {
-    try {
-      setError("");
-      const features = await getMyFeatures();
-      const hasSubUserFeature = features.some(
-        (f) => f.key === "sub-users.create" && f.enabled,
-      );
-      setCanCreate(hasSubUserFeature);
-
-      const items = await subUserService.list();
-      setItems(items);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const error = loadError
+    ? loadError instanceof Error
+      ? loadError.message
+      : "Failed to load."
+    : "";
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -72,7 +69,7 @@ export default function SubUsersPage() {
           text: `New sub-user "${result.user.email}" has been created.`,
         });
       }
-      load();
+      mutateItems();
     } catch (err) {
       setMessage({
         type: "error",
@@ -96,7 +93,7 @@ export default function SubUsersPage() {
         type: "success",
         text: "Sub-user revoked. Their account is now independent.",
       });
-      load();
+      mutateItems();
     } catch (err) {
       setMessage({
         type: "error",

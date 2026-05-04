@@ -192,8 +192,9 @@ app-client/
 │   ├── layout/        <- App shells (AdminShell with sidebar nav + logout)
 │   ├── auth/          <- Auth provider context (AuthConfigProvider, ClerkSignIn, ClerkSignUp)
 │   └── admin/         <- Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer)
-├── hooks/             <- Custom React hooks (useAdminResource, useCart)
-├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, feature-service, sub-user-service, purchase-service, billing-service, report-service, activity-log-service, setting-service, admin-setting-service, checkout-service, download-service)
+├── hooks/             <- Custom React hooks (useAdminAuth, useUserAuth, useAdminResource, useFeatures, useCart)
+├── lib/               <- Shared utilities (swr.ts — fetchers and SWR configuration)
+├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, sub-user-service, purchase-service, billing-service, report-service, activity-log-service, admin-setting-service, checkout-service, download-service)
 └── types/             <- Shared type definitions (barrel-exported via index.ts)
     ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
     ├── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection, FieldRendererProps, DynamicOption, ResourceManagerProps, ResourceEditorProps, ResourceListProps
@@ -221,26 +222,31 @@ app-client/
 - **UI primitives**: Reusable `Button`, `Modal`, `Notice`, `StatusBadge`, `PageHeader`, `FormField`, `FormSection`, `EmptyState`, `StatCard`, `DashboardCard` components in `components/ui/`
 - **Admin layout shell**: `AdminShell` provides sidebar navigation with icons (Lucide), mobile hamburger menu, user avatar, wrapping admin pages
 - **User layout shell**: `UserShell` provides sidebar navigation with icons, plan badge, mobile menu wrapping user pages
-- **Site config provider**: `SiteConfigProvider` fetches site identity and theme tokens from `/api/settings/site` and injects CSS custom properties at runtime. `useSiteConfig()` hook exposes `title`, `tagline`, `logo`, etc. to any component
+- **Site config provider**: `SiteConfigProvider` fetches site identity and theme tokens from `/api/settings/site` via SWR (60s dedup) and injects CSS custom properties at runtime. `useSiteConfig()` hook exposes `title`, `tagline`, `logo`, etc. to any component
 - **Dynamic head**: `DynamicHead` component sets favicon from site config
+- **SWR data fetching**: All client-side data fetching uses SWR (`lib/swr.ts`) for automatic caching, request deduplication, and stale-while-revalidate. Shared fetchers: `swrFetcher` (single object), `swrListFetcher` (unwraps `{ items }` arrays), `swrFeatureFetcher` (unwraps `{ features }` arrays)
+- **Auth hooks**: `useAdminAuth()` and `useUserAuth()` (in `hooks/use-auth.ts`) wrap SWR with 30s dedup — layouts use these instead of raw `useEffect` to prevent redundant `/me` calls on every navigation
 - **Decomposed CRUD**: `ResourceManager` orchestrates `ResourceEditor` (modal form) and `ResourceList` (item cards)
 - **Generic CRUD client**: `resourceService.list/create/update/remove/save` works for any endpoint
-- **Auto-refresh hook**: `useAdminResource<T>` polls every 15s for fresh data
+- **Admin resource hook**: `useAdminResource<T>` uses SWR with 30s refresh interval and `refreshWhenHidden: false` for visibility-aware polling
 - **Field-driven forms**: `FieldRenderer` generates form inputs from field config arrays
 - **Barrel exports**: `@/types`, `@/components/ui`, `@/components/admin` — clean single-path imports
 
 ### Service Layer
 
 ```
-UI Component
+UI Component (page or hook)
     | calls
-resourceService.list("/api/admins")
-    | calls
+useSWR("/api/admins", swrListFetcher)
+    | delegates to
 apiGet("/api/admins")
     | calls
 fetch(`${NEXT_PUBLIC_API_URL}/api/admins`, { credentials: "include" })
     | parses
 { ok: true, data: { items: [...] } }
+
+SWR layer adds: caching, request deduplication, stale-while-revalidate,
+visibility-aware polling, and automatic revalidation on focus.
 ```
 
 ---

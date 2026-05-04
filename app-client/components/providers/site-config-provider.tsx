@@ -1,13 +1,8 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
-import { settingService } from "@/services/setting-service";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
+import useSWR from "swr";
+import { swrFetcher } from "@/lib/swr";
 import type { SiteConfig, ThemeTokens } from "@/types";
 
 const TOKEN_TO_VAR: Record<keyof ThemeTokens, string> = {
@@ -53,19 +48,19 @@ function applyThemeVars(theme: ThemeTokens) {
 }
 
 export function SiteConfigProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<SiteConfig>(DEFAULT_CONFIG);
+  const { data } = useSWR<SiteConfig>("/api/settings/site", swrFetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+    errorRetryCount: 1,
+  });
+
+  const config = data ?? DEFAULT_CONFIG;
 
   useEffect(() => {
-    settingService
-      .getSiteConfig()
-      .then((res) => {
-        if (res.ok && res.data) {
-          setConfig(res.data);
-          applyThemeVars(res.data.theme);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (data?.theme) {
+      applyThemeVars(data.theme);
+    }
+  }, [data]);
 
   return (
     <SiteConfigContext.Provider value={config}>

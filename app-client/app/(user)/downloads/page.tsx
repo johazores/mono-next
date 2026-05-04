@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import useSWR from "swr";
+import { swrListFetcher } from "@/lib/swr";
 import { downloadService } from "@/services/download-service";
 import { PageHeader, EmptyState } from "@/components/ui";
 import type { PurchaseDownload } from "@/types";
@@ -21,16 +22,10 @@ function formatDate(iso: string): string {
 }
 
 export default function DownloadsPage() {
-  const [downloads, setDownloads] = useState<PurchaseDownload[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    downloadService
-      .listDownloads()
-      .then(setDownloads)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: downloads = [], isLoading: loading } = useSWR(
+    "/api/users/auth/downloads",
+    (url: string) => swrListFetcher<PurchaseDownload>(url),
+  );
 
   if (loading) {
     return <p className="text-sm text-muted">Loading downloads&hellip;</p>;
