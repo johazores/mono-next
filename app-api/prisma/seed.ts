@@ -589,6 +589,525 @@ async function main() {
   } else {
     console.log("PurchaseFile already exists: starter-guide.txt");
   }
+
+  // ---------------------------------------------------------------------------
+  // Seed CMS content types
+  // ---------------------------------------------------------------------------
+  const contentTypes = [
+    {
+      name: "Blog Post",
+      slug: "blog-posts",
+      pluralName: "Blog Posts",
+      description: "Blog articles and news",
+      icon: "file-text",
+      fields: [
+        {
+          name: "excerpt",
+          label: "Excerpt",
+          type: "textarea",
+          required: false,
+        },
+        { name: "body", label: "Body", type: "rich-text", required: true },
+        {
+          name: "featuredImage",
+          label: "Featured Image",
+          type: "media",
+          required: false,
+        },
+        {
+          name: "category",
+          label: "Category",
+          type: "select",
+          options: ["news", "tutorial", "update"],
+          required: false,
+        },
+      ],
+      settings: {
+        hasSlug: true,
+        hasStatus: true,
+        slugSource: "title",
+        defaultStatus: "draft",
+      },
+      listDisplay: {
+        titleField: "title",
+        subtitleField: "excerpt",
+        imageField: "featuredImage",
+      },
+      publicSettings: {
+        hasPublicList: true,
+        hasDetailPage: true,
+        urlPrefix: "blog-posts",
+      },
+      status: "active",
+      sortOrder: 0,
+      env,
+    },
+    {
+      name: "Service",
+      slug: "services",
+      pluralName: "Services",
+      description: "Services offered",
+      icon: "briefcase",
+      fields: [
+        {
+          name: "excerpt",
+          label: "Excerpt",
+          type: "textarea",
+          required: false,
+        },
+        {
+          name: "body",
+          label: "Description",
+          type: "rich-text",
+          required: true,
+        },
+        {
+          name: "featuredImage",
+          label: "Image",
+          type: "media",
+          required: false,
+        },
+        {
+          name: "price",
+          label: "Starting Price",
+          type: "text",
+          required: false,
+        },
+      ],
+      settings: {
+        hasSlug: true,
+        hasStatus: true,
+        slugSource: "title",
+        defaultStatus: "draft",
+      },
+      listDisplay: {
+        titleField: "title",
+        subtitleField: "excerpt",
+        imageField: "featuredImage",
+      },
+      publicSettings: {
+        hasPublicList: true,
+        hasDetailPage: true,
+        urlPrefix: "services",
+      },
+      status: "active",
+      sortOrder: 1,
+      env,
+    },
+    {
+      name: "FAQ",
+      slug: "faqs",
+      pluralName: "FAQs",
+      description: "Frequently asked questions",
+      icon: "help-circle",
+      fields: [
+        { name: "answer", label: "Answer", type: "rich-text", required: true },
+        {
+          name: "category",
+          label: "Category",
+          type: "select",
+          options: ["general", "billing", "technical"],
+          required: false,
+        },
+        {
+          name: "sortOrder",
+          label: "Sort Order",
+          type: "number",
+          required: false,
+        },
+      ],
+      settings: {
+        hasSlug: true,
+        hasStatus: true,
+        hasSortOrder: true,
+        slugSource: "title",
+        defaultStatus: "draft",
+      },
+      listDisplay: { titleField: "title", subtitleField: "category" },
+      publicSettings: {
+        hasPublicList: true,
+        hasDetailPage: true,
+        urlPrefix: "faqs",
+      },
+      status: "active",
+      sortOrder: 2,
+      env,
+    },
+  ];
+
+  for (const ct of contentTypes) {
+    await prisma.contentType.upsert({
+      where: { env_slug: { env, slug: ct.slug } },
+      update: {
+        name: ct.name,
+        pluralName: ct.pluralName,
+        description: ct.description,
+        icon: ct.icon,
+        fields: ct.fields,
+        settings: ct.settings,
+        listDisplay: ct.listDisplay,
+        publicSettings: ct.publicSettings,
+        status: ct.status,
+        sortOrder: ct.sortOrder,
+      },
+      create: ct,
+    });
+    console.log(`ContentType seeded: ${ct.name}`);
+  }
+
+  // Seed CMS taxonomies
+  const taxonomies = [
+    {
+      name: "Category",
+      slug: "categories",
+      pluralName: "Categories",
+      description: "Content categories",
+      contentTypes: ["blog-posts", "services"],
+      status: "active",
+      sortOrder: 0,
+      env,
+    },
+    {
+      name: "Tag",
+      slug: "tags",
+      pluralName: "Tags",
+      description: "Content tags",
+      contentTypes: ["blog-posts"],
+      status: "active",
+      sortOrder: 1,
+      env,
+    },
+  ];
+
+  for (const tax of taxonomies) {
+    await prisma.taxonomy.upsert({
+      where: { env_slug: { env, slug: tax.slug } },
+      update: {
+        name: tax.name,
+        pluralName: tax.pluralName,
+        description: tax.description,
+        contentTypes: tax.contentTypes,
+        status: tax.status,
+        sortOrder: tax.sortOrder,
+      },
+      create: tax,
+    });
+    console.log(`Taxonomy seeded: ${tax.name}`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Seed block templates (ACF flexible content layouts)
+  // ---------------------------------------------------------------------------
+  const blockTemplates = [
+    {
+      name: "Hero Banner",
+      slug: "hero",
+      description:
+        "Full-width hero section with heading, text, image and CTA buttons",
+      icon: "layout-template",
+      category: "layout",
+      fields: [
+        { name: "eyebrow", label: "Small Label", type: "text", width: "half" },
+        {
+          name: "title",
+          label: "Main Heading",
+          type: "text",
+          required: true,
+          width: "half",
+        },
+        {
+          name: "description",
+          label: "Description",
+          type: "textarea",
+          width: "full",
+        },
+        {
+          name: "imageUrl",
+          label: "Hero Image URL",
+          type: "media",
+          width: "full",
+        },
+        {
+          name: "primaryLabel",
+          label: "Primary Button Label",
+          type: "text",
+          width: "half",
+        },
+        {
+          name: "primaryHref",
+          label: "Primary Button Link",
+          type: "url",
+          width: "half",
+        },
+        {
+          name: "secondaryLabel",
+          label: "Secondary Button Label",
+          type: "text",
+          width: "half",
+        },
+        {
+          name: "secondaryHref",
+          label: "Secondary Button Link",
+          type: "url",
+          width: "half",
+        },
+      ],
+      defaults: { primaryLabel: "Learn More", primaryHref: "/" },
+      status: "active",
+      sortOrder: 0,
+      env,
+    },
+    {
+      name: "Rich Text",
+      slug: "rich-text",
+      description: "A text section with a title and HTML body content",
+      icon: "file-text",
+      category: "content",
+      fields: [
+        { name: "title", label: "Section Title", type: "text", width: "full" },
+        {
+          name: "body",
+          label: "Content (HTML)",
+          type: "rich-text",
+          required: true,
+          width: "full",
+        },
+      ],
+      status: "active",
+      sortOrder: 1,
+      env,
+    },
+    {
+      name: "Feature Grid",
+      slug: "feature-grid",
+      description:
+        "Grid of feature cards with title, description and optional image",
+      icon: "grid-3x3",
+      category: "content",
+      fields: [
+        { name: "title", label: "Section Title", type: "text", width: "half" },
+        {
+          name: "description",
+          label: "Section Description",
+          type: "textarea",
+          width: "full",
+        },
+        {
+          name: "items",
+          label: "Feature Cards",
+          type: "repeater",
+          width: "full",
+          subFields: [
+            { name: "title", label: "Card Title", type: "text", width: "half" },
+            {
+              name: "imageUrl",
+              label: "Card Image URL",
+              type: "media",
+              width: "half",
+            },
+            {
+              name: "description",
+              label: "Card Description",
+              type: "textarea",
+              width: "full",
+            },
+          ],
+        },
+      ],
+      status: "active",
+      sortOrder: 2,
+      env,
+    },
+    {
+      name: "Stats Row",
+      slug: "stat-grid",
+      description: "Row of statistics with large numbers and labels",
+      icon: "bar-chart-3",
+      category: "content",
+      fields: [
+        {
+          name: "items",
+          label: "Stats",
+          type: "repeater",
+          width: "full",
+          subFields: [
+            { name: "value", label: "Value", type: "text", width: "half" },
+            { name: "label", label: "Label", type: "text", width: "half" },
+          ],
+        },
+      ],
+      status: "active",
+      sortOrder: 3,
+      env,
+    },
+    {
+      name: "Image Gallery",
+      slug: "image-gallery",
+      description: "Grid of images with optional captions",
+      icon: "image",
+      category: "media",
+      fields: [
+        { name: "title", label: "Gallery Title", type: "text", width: "full" },
+        {
+          name: "images",
+          label: "Images",
+          type: "repeater",
+          width: "full",
+          subFields: [
+            { name: "url", label: "Image URL", type: "media", width: "half" },
+            { name: "alt", label: "Alt Text", type: "text", width: "half" },
+            { name: "caption", label: "Caption", type: "text", width: "full" },
+          ],
+        },
+      ],
+      status: "active",
+      sortOrder: 4,
+      env,
+    },
+    {
+      name: "Document List",
+      slug: "document-list",
+      description: "List of downloadable documents with links",
+      icon: "folder-open",
+      category: "content",
+      fields: [
+        { name: "title", label: "Section Title", type: "text", width: "full" },
+        {
+          name: "documents",
+          label: "Documents",
+          type: "repeater",
+          width: "full",
+          subFields: [
+            {
+              name: "label",
+              label: "Document Name",
+              type: "text",
+              width: "half",
+            },
+            { name: "url", label: "Document URL", type: "url", width: "half" },
+            { name: "type", label: "File Type", type: "text", width: "half" },
+          ],
+        },
+      ],
+      status: "active",
+      sortOrder: 5,
+      env,
+    },
+    {
+      name: "Call to Action",
+      slug: "cta",
+      description: "Centered CTA section with heading, description and button",
+      icon: "megaphone",
+      category: "cta",
+      fields: [
+        {
+          name: "title",
+          label: "Heading",
+          type: "text",
+          required: true,
+          width: "half",
+        },
+        {
+          name: "description",
+          label: "Description",
+          type: "textarea",
+          width: "full",
+        },
+        {
+          name: "buttonLabel",
+          label: "Button Label",
+          type: "text",
+          width: "half",
+        },
+        {
+          name: "buttonHref",
+          label: "Button Link",
+          type: "url",
+          width: "half",
+        },
+      ],
+      defaults: { buttonLabel: "Get Started", buttonHref: "/contact" },
+      status: "active",
+      sortOrder: 6,
+      env,
+    },
+    {
+      name: "Two Column",
+      slug: "two-column",
+      description: "Side-by-side text and image section",
+      icon: "columns-2",
+      category: "layout",
+      fields: [
+        { name: "title", label: "Title", type: "text", width: "full" },
+        {
+          name: "body",
+          label: "Content (HTML)",
+          type: "rich-text",
+          width: "full",
+        },
+        { name: "imageUrl", label: "Image URL", type: "media", width: "full" },
+        {
+          name: "imagePosition",
+          label: "Image Position",
+          type: "select",
+          options: ["left", "right"],
+          width: "half",
+        },
+      ],
+      defaults: { imagePosition: "right" },
+      status: "active",
+      sortOrder: 7,
+      env,
+    },
+    {
+      name: "Testimonials",
+      slug: "testimonials",
+      description: "Customer testimonials grid",
+      icon: "quote",
+      category: "content",
+      fields: [
+        { name: "title", label: "Section Title", type: "text", width: "full" },
+        {
+          name: "items",
+          label: "Testimonials",
+          type: "repeater",
+          width: "full",
+          subFields: [
+            { name: "quote", label: "Quote", type: "textarea", width: "full" },
+            { name: "name", label: "Author Name", type: "text", width: "half" },
+            { name: "role", label: "Author Role", type: "text", width: "half" },
+            {
+              name: "avatarUrl",
+              label: "Avatar URL",
+              type: "media",
+              width: "half",
+            },
+          ],
+        },
+      ],
+      status: "active",
+      sortOrder: 8,
+      env,
+    },
+  ];
+
+  for (const bt of blockTemplates) {
+    await prisma.blockTemplate.upsert({
+      where: { env_slug: { env, slug: bt.slug } },
+      update: {
+        name: bt.name,
+        description: bt.description,
+        icon: bt.icon,
+        category: bt.category,
+        fields: bt.fields,
+        defaults: (bt as Record<string, unknown>).defaults ?? undefined,
+        status: bt.status,
+        sortOrder: bt.sortOrder,
+      },
+      create: bt,
+    });
+    console.log(`BlockTemplate seeded: ${bt.name}`);
+  }
 }
 
 main()

@@ -35,7 +35,27 @@ export type ActivityAction =
   | "price.delete"
   | "file.download"
   | "billing.portal"
-  | "billing.sync";
+  | "billing.sync"
+  | "page.create"
+  | "page.update"
+  | "page.delete"
+  | "content-type.create"
+  | "content-type.update"
+  | "content-type.delete"
+  | "content.create"
+  | "content.update"
+  | "content.delete"
+  | "taxonomy.create"
+  | "taxonomy.update"
+  | "taxonomy.delete"
+  | "taxonomy-term.create"
+  | "taxonomy-term.update"
+  | "taxonomy-term.delete"
+  | "media.create"
+  | "media.delete"
+  | "block-template.create"
+  | "block-template.update"
+  | "block-template.delete";
 
 export type ActivityActor = "admin" | "user" | "system";
 

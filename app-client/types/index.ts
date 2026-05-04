@@ -78,3 +78,18 @@ export type {
   BillingStatus,
 } from "./billing";
 export type { SiteConfig, ThemeTokens } from "./site-config";
+export type {
+  CmsPage,
+  ContentFieldType,
+  ContentFieldDefinition,
+  ContentTypeSettings,
+  ContentTypeListDisplay,
+  ContentTypePublicSettings,
+  ContentType,
+  ContentItem,
+  Taxonomy,
+  TaxonomyTerm,
+  MediaItem,
+  BlockTemplate,
+  FlexibleBlock,
+} from "./cms";

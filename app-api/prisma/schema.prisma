@@ -217,3 +217,132 @@ model CheckoutSession {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
+
+// ---------------------------------------------------------------------------
+// CMS
+// ---------------------------------------------------------------------------
+
+model Page {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  env            String   @default("dev") // dev | production
+  title          String
+  slug           String
+  status         String   @default("draft") // draft | published
+  seoTitle       String?
+  seoDescription String?
+  blocks         Json // PageBlock[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([env, slug])
+}
+
+model ContentType {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  env            String        @default("dev") // dev | production
+  name           String
+  slug           String
+  pluralName     String
+  icon           String?
+  description    String?
+  fields         Json // field definitions array
+  settings       Json // { hasSlug, hasStatus, hasSortOrder, slugSource, defaultStatus }
+  listDisplay    Json? // { titleField, subtitleField, imageField }
+  publicSettings Json? // { hasPublicList, hasDetailPage, urlPrefix }
+  status         String        @default("active") // active | inactive
+  sortOrder      Int           @default(0)
+  items          ContentItem[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([env, slug])
+}
+
+model ContentItem {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  env             String      @default("dev") // dev | production
+  contentTypeId   String      @db.ObjectId
+  contentTypeSlug String
+  contentType     ContentType @relation(fields: [contentTypeId], references: [id])
+  slug            String
+  title           String
+  data            Json // flexible field data
+  status          String      @default("draft") // draft | published
+  sortOrder       Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([env, contentTypeSlug, slug])
+  @@index([env, contentTypeSlug, status])
+}
+
+model Taxonomy {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  env          String         @default("dev") // dev | production
+  name         String
+  slug         String
+  pluralName   String
+  description  String?
+  hierarchical Boolean        @default(false)
+  contentTypes String[] // slugs of associated content types
+  status       String         @default("active") // active | inactive
+  sortOrder    Int            @default(0)
+  terms        TaxonomyTerm[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([env, slug])
+}
+
+model TaxonomyTerm {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  env         String   @default("dev") // dev | production
+  taxonomyId  String   @db.ObjectId
+  taxonomy    Taxonomy @relation(fields: [taxonomyId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  imageUrl    String?
+  parentId    String?  @db.ObjectId
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([env, taxonomyId, slug])
+  @@index([env, taxonomyId, parentId])
+}
+
+model Media {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  env          String   @default("dev") // dev | production
+  source       String   @default("upload") // upload | external
+  fileName     String
+  originalName String
+  url          String
+  mimeType     String?
+  size         Int?
+  mediaType    String   @default("image") // image | document | file
+  altText      String?
+  base64Data   String? // base64-encoded file content (small files only)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model BlockTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  env         String   @default("dev") // dev | production
+  name        String
+  slug        String
+  description String?
+  icon        String? // Lucide icon name
+  category    String   @default("content") // layout | content | media | cta
+  fields      Json // ContentFieldDefinition[]
+  defaults    Json? // default values per field
+  preview     String? // optional HTML preview snippet
+  status      String   @default("active") // active | inactive
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([env, slug])
+}

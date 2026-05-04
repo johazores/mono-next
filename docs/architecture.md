@@ -28,10 +28,10 @@ are global).
 
 ### Scoped vs Global Models
 
-| Scope      | Models                                                                                                                           | Behavior                            |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| **Env**    | User, UserSession, Product, ProductPrice, Purchase, PurchaseFile, Membership, Feature, ActivityLog, SiteSetting, CheckoutSession | Filtered by `APP_ENV` automatically |
-| **Global** | Admin, AdminSession                                                                                                              | Shared across all environments      |
+| Scope      | Models                                                                                                                                                                                                         | Behavior                            |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| **Env**    | User, UserSession, Product, ProductPrice, Purchase, PurchaseFile, Membership, Feature, ActivityLog, SiteSetting, CheckoutSession, Page, ContentType, ContentItem, Taxonomy, TaxonomyTerm, Media, BlockTemplate | Filtered by `APP_ENV` automatically |
+| **Global** | Admin, AdminSession                                                                                                                                                                                            | Shared across all environments      |
 
 ### Per-Environment Configuration
 
@@ -91,7 +91,8 @@ app-api/
 │   ├── activity-log.ts <- ActivityAction, ActivityActor, ActivityLogRecord, ActivityLogFilter
 │   ├── rate-limiter.ts <- RateLimitEntry, RateLimitConfig, RateLimitResult
 │   ├── response.ts    <- ApiResponse<T>, ListResponse<T>
-│   └── setting.ts     <- AppEnv, AuthProvider, AuthConfig, PublicAuthConfig, SettingRecord, ThemeTokens, SiteConfig
+│   ├── setting.ts     <- AppEnv, AuthProvider, AuthConfig, PublicAuthConfig, SettingRecord, ThemeTokens, SiteConfig
+│   └── cms.ts         <- PageRecord, FlexibleBlock, ContentFieldType, ContentFieldDefinition, ContentTypeRecord, ContentItemRecord, TaxonomyRecord, TaxonomyTermRecord, MediaRecord, BlockTemplateRecord + CRUD input types
 ├── lib/               <- Cross-cutting utilities (auth, password, prisma, response, credentials, rate-limiter, activity-logger, csrf, request-utils, clerk-auth)
 └── prisma/            <- Schema + seed scripts
 ```
@@ -146,6 +147,13 @@ app-api/
   - `Feature` — Feature definitions (env, key, description, category, isActive, sortOrder) `@@unique([env, key])`
   - `ActivityLog` — Audit trail (env, actor, actorId, actorEmail, action, resource, resourceId, metadata, ip, userAgent, method, path, createdAt)
   - `SiteSetting` — Key-value configuration store (env, key, JSON value) for auth provider and system settings `@@unique([env, key])`
+  - `Page` — CMS pages with flexible block content (env, title, slug, status, seoTitle, seoDescription, blocks as JSON array of FlexibleBlock) `@@unique([env, slug])`
+  - `ContentType` — ACF-like content type definitions (env, name, slug, pluralName, icon, description, fields as JSON, settings as JSON, listDisplay as JSON, publicSettings as JSON, status, sortOrder) `@@unique([env, slug])`
+  - `ContentItem` — Content entries belonging to a content type (env, contentTypeId -> ContentType, contentTypeSlug, slug, title, data as JSON, status, sortOrder) `@@unique([env, contentTypeSlug, slug])`
+  - `Taxonomy` — Taxonomy definitions (env, name, slug, pluralName, description, hierarchical, contentTypes as string array, status, sortOrder) `@@unique([env, slug])`
+  - `TaxonomyTerm` — Terms within a taxonomy (env, taxonomyId -> Taxonomy, name, slug, description, imageUrl, parentId, sortOrder) `@@unique([env, taxonomyId, slug])`
+  - `Media` — Uploaded media files (env, source, fileName, originalName, url, mimeType, size, mediaType, altText, base64Data). Small files stored as base64, served via `/api/cms/media/[id]/file`
+  - `BlockTemplate` — ACF flexible content layout definitions (env, name, slug, description, icon, category, fields as JSON, defaults as JSON, preview, status, sortOrder) `@@unique([env, slug])`
   - All models include `createdAt` (auto-set) and `updatedAt` (auto-managed by Prisma), except `ActivityLog` which only has `createdAt`
 - **Schema location**: `app-api/prisma/schema.prisma`
 
@@ -171,7 +179,13 @@ app-client/
 │   │       ├── reports/       <- Reports dashboard (/admin/reports)
 │   │       ├── activity/      <- Activity log viewer (/admin/activity)
 │   │       ├── settings/      <- Auth provider and payment settings (/admin/settings)
-│   │       └── profile/       <- Admin profile management (/admin/profile)
+│   │       ├── profile/       <- Admin profile management (/admin/profile)
+│   │       ├── pages/         <- CMS page builder with flexible blocks (/admin/pages)
+│   │       ├── block-templates/ <- Block template definitions (/admin/block-templates)
+│   │       ├── content-types/ <- Content type management (/admin/content-types)
+│   │       ├── taxonomies/    <- Taxonomy management (/admin/taxonomies)
+│   │       ├── media/         <- Media library (/admin/media)
+│   │       └── content/[typeSlug]/ <- Dynamic content editor (/admin/content/[typeSlug])
 │   ├── (user)/        <- Protected user pages (auth guard in layout)
 │   │   ├── layout.tsx <- Auth check, redirects to /user-login
 │   │   ├── my-account/ <- User dashboard (/my-account)
@@ -186,15 +200,19 @@ app-client/
 │       ├── user-login/ <- User login form
 │       ├── user-register/ <- User registration form
 │       ├── cart/      <- Shopping cart with checkout initiation
-│       └── checkout/  <- Success and cancellation pages
+│       ├── checkout/  <- Success and cancellation pages
+│       ├── p/[slug]/  <- CMS page rendering (SSR with block templates)
+│       ├── [typeSlug]/ <- Public content list page
+│       └── [typeSlug]/[slug]/ <- Public content detail page
 ├── components/
 │   ├── ui/            <- Reusable primitives (Button, Modal, Notice, StatusBadge)
 │   ├── layout/        <- App shells (AdminShell with sidebar nav + logout)
 │   ├── auth/          <- Auth provider context (AuthConfigProvider, ClerkSignIn, ClerkSignUp)
-│   └── admin/         <- Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer)
+│   ├── admin/         <- Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer, PageBuilder)
+│   └── blocks/        <- CMS block rendering (BlockRenderer — template-driven field-to-visual mapper)
 ├── hooks/             <- Custom React hooks (useAdminAuth, useUserAuth, useAdminResource, useFeatures, useCart)
 ├── lib/               <- Shared utilities (swr.ts — fetchers and SWR configuration)
-├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, sub-user-service, purchase-service, billing-service, report-service, activity-log-service, admin-setting-service, checkout-service, download-service)
+├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, sub-user-service, purchase-service, billing-service, report-service, activity-log-service, admin-setting-service, checkout-service, download-service, cms-service)
 └── types/             <- Shared type definitions (barrel-exported via index.ts)
     ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
     ├── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection, FieldRendererProps, DynamicOption, ResourceManagerProps, ResourceEditorProps, ResourceListProps
@@ -212,7 +230,8 @@ app-client/
     ├── report.ts      <- AdminReport, ReportPeriod, ProductBreakdown, SubscriptionBreakdown
     ├── activity-log.ts <- ActivityLogEntry, ActivityLogList
     ├── setting.ts     <- AuthProvider, PublicAuthConfig, SettingItem, PaymentMode, AuthSettings, PaymentSettings
-    └── site-config.ts <- ThemeTokens, SiteConfig
+    ├── site-config.ts <- ThemeTokens, SiteConfig
+    └── cms.ts         <- CmsPage, FlexibleBlock, ContentFieldType, ContentFieldDefinition, ContentType, ContentItem, Taxonomy, TaxonomyTerm, MediaItem, BlockTemplate
 ```
 
 ### Key Patterns

@@ -19,6 +19,11 @@ import {
   LogOut,
   Menu,
   X,
+  FileText,
+  Layers,
+  Tags,
+  Image,
+  LayoutTemplate,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -30,6 +35,11 @@ const navigation: AdminNavItem[] = [
   { label: "Admins", href: "/admin/admins", icon: ShieldCheck },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Features", href: "/admin/features", icon: ToggleRight },
+  { label: "Pages", href: "/admin/pages", icon: FileText },
+  { label: "Blocks", href: "/admin/block-templates", icon: LayoutTemplate },
+  { label: "Content", href: "/admin/content-types", icon: Layers },
+  { label: "Taxonomies", href: "/admin/taxonomies", icon: Tags },
+  { label: "Media", href: "/admin/media", icon: Image },
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },
   { label: "Activity", href: "/admin/activity", icon: Activity },
   { label: "Settings", href: "/admin/settings", icon: Settings },

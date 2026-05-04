@@ -14,6 +14,13 @@ const ENV_SCOPED_MODELS = new Set([
   "ActivityLog",
   "SiteSetting",
   "CheckoutSession",
+  "Page",
+  "ContentType",
+  "ContentItem",
+  "Taxonomy",
+  "TaxonomyTerm",
+  "Media",
+  "BlockTemplate",
 ]);
 
 function isEnvScoped(model: string | undefined): boolean {
