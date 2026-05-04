@@ -96,14 +96,10 @@ model Product {
   price               Float          @default(0)
   currency            String         @default("USD")
   paymentModel        String         @default("one-time") // one-time | recurring
-  interval            String?        // month | year (for recurring products)
   maxSubUsers         Int            @default(0) // 0 = none, -1 = unlimited
-  fileUrls            String[]       // For digital download products
   accessKeys          String[]       // Feature keys unlocked by purchase
   stripeTestProductId String?        // Stripe product ID (test mode)
-  stripeTestPriceId   String?        // Stripe price ID (test mode)
   stripeLiveProductId String?        // Stripe product ID (live mode)
-  stripeLivePriceId   String?        // Stripe price ID (live mode)
   isActive            Boolean        @default(true)
   sortOrder           Int            @default(0)
   metadata            Json?

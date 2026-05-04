@@ -27,7 +27,7 @@ export type {
   CreateSubUserResult,
 } from "./sub-user";
 export type { FeatureFlag } from "./feature";
-export type { Product } from "./product";
+export type { Product, ProductType, PaymentModel } from "./product";
 export type { Purchase } from "./purchase";
 export type {
   ProductBreakdown,
@@ -45,3 +45,8 @@ export type {
   PublicPaymentConfig,
 } from "./checkout";
 export type { PurchaseDownload, DownloadFile } from "./download";
+export type {
+  StripeSubscription,
+  StripeInvoice,
+  BillingStatus,
+} from "./billing";

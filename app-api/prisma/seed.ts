@@ -15,7 +15,6 @@ async function main() {
       price: 0,
       currency: "USD",
       paymentModel: "recurring" as const,
-      interval: "month",
       maxSubUsers: 0,
       accessKeys: ["storage.1gb", "support.community"],
       sortOrder: 0,
@@ -28,7 +27,6 @@ async function main() {
       price: 9.99,
       currency: "USD",
       paymentModel: "recurring" as const,
-      interval: "month",
       maxSubUsers: 3,
       accessKeys: ["storage.5gb", "support.email", "sub-users.create"],
       sortOrder: 1,
@@ -41,7 +39,6 @@ async function main() {
       price: 29.99,
       currency: "USD",
       paymentModel: "recurring" as const,
-      interval: "month",
       maxSubUsers: 10,
       accessKeys: [
         "storage.50gb",
@@ -61,7 +58,6 @@ async function main() {
       price: 99.99,
       currency: "USD",
       paymentModel: "recurring" as const,
-      interval: "month",
       maxSubUsers: -1,
       accessKeys: [
         "storage.unlimited",
@@ -104,7 +100,6 @@ async function main() {
       price: 19.99,
       currency: "USD",
       paymentModel: "recurring" as const,
-      interval: "month",
       accessKeys: [
         "reports.advanced",
         "api.access",
@@ -121,7 +116,10 @@ async function main() {
       update: {
         name: product.name,
         description: product.description,
+        type: product.type,
         price: product.price,
+        currency: product.currency,
+        paymentModel: product.paymentModel,
         accessKeys: product.accessKeys,
         maxSubUsers: product.maxSubUsers ?? 0,
         sortOrder: product.sortOrder,

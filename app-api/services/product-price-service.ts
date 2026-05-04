@@ -1,4 +1,5 @@
 import { productPriceRepository } from "@/repositories/product-price-repository";
+import { productRepository } from "@/repositories/product-repository";
 import type {
   ProductPriceRecord,
   CreateProductPriceInput,
@@ -33,6 +34,19 @@ export const productPriceService = {
       isDefault: input.isDefault ?? false,
       metadata: (input.metadata ?? null) as never,
     });
+
+    // Auto-link the Stripe product ID on the parent product
+    if (input.stripeProductId) {
+      const field =
+        input.mode === "live" ? "stripeLiveProductId" : "stripeTestProductId";
+      const product = await productRepository.findById(input.productId);
+      if (product && !product[field]) {
+        await productRepository.update(input.productId, {
+          [field]: input.stripeProductId,
+        });
+      }
+    }
+
     return price as ProductPriceRecord;
   },
 

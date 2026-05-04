@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { ResourceManager } from "@/components/admin";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/services/api-client";
+import { apiGet, apiPost, apiDelete } from "@/services/api-client";
 import type { ResourceField, ResourceItem } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -28,13 +28,6 @@ const productFields: ResourceField[] = [
     options: ["one-time", "recurring"],
   },
   {
-    name: "interval",
-    label: "Billing Interval",
-    type: "select",
-    options: ["month", "year"],
-    help: "For recurring products only.",
-  },
-  {
     name: "maxSubUsers",
     label: "Max Sub-Users",
     type: "number",
@@ -54,30 +47,6 @@ const productFields: ResourceField[] = [
     options: ["true", "false"],
   },
   { name: "sortOrder", label: "Sort Order", type: "number" },
-  {
-    name: "stripeTestProductId",
-    label: "Stripe Test Product ID",
-    type: "text",
-    help: "Stripe product ID for test mode (e.g. prod_...).",
-  },
-  {
-    name: "stripeTestPriceId",
-    label: "Stripe Test Price ID",
-    type: "text",
-    help: "Stripe price ID for test mode (e.g. price_...).",
-  },
-  {
-    name: "stripeLiveProductId",
-    label: "Stripe Live Product ID",
-    type: "text",
-    help: "Stripe product ID for live mode.",
-  },
-  {
-    name: "stripeLivePriceId",
-    label: "Stripe Live Price ID",
-    type: "text",
-    help: "Stripe price ID for live mode.",
-  },
 ];
 
 const emptyProduct: ResourceItem = {
@@ -88,86 +57,21 @@ const emptyProduct: ResourceItem = {
   price: 0,
   currency: "USD",
   paymentModel: "one-time",
-  interval: "month",
   maxSubUsers: 0,
-  fileUrls: [],
   accessKeys: [],
   isActive: "true",
   sortOrder: 0,
-  stripeTestProductId: "",
-  stripeTestPriceId: "",
-  stripeLiveProductId: "",
-  stripeLivePriceId: "",
 };
 
 // ---------------------------------------------------------------------------
-// File URLs editor (inline in product modal)
-// ---------------------------------------------------------------------------
-
-function FileUrlsEditor({
-  urls,
-  onChange,
-}: {
-  urls: string[];
-  onChange: (urls: string[]) => void;
-}) {
-  const inputClass =
-    "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">
-          File URLs
-          <span className="ml-1 text-xs font-normal text-gray-400">
-            Download links for digital products
-          </span>
-        </label>
-        <button
-          type="button"
-          onClick={() => onChange([...urls, ""])}
-          className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-        >
-          + Add URL
-        </button>
-      </div>
-      {urls.length === 0 && (
-        <p className="text-xs text-gray-400">No file URLs added.</p>
-      )}
-      {urls.map((url, i) => (
-        <div key={i} className="flex gap-2">
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => {
-              const next = [...urls];
-              next[i] = e.target.value;
-              onChange(next);
-            }}
-            placeholder="https://example.com/file.pdf"
-            className={inputClass}
-          />
-          <button
-            type="button"
-            onClick={() => onChange(urls.filter((_, j) => j !== i))}
-            className="shrink-0 rounded-md px-2 text-sm text-red-600 hover:bg-red-50"
-          >
-            Remove
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Product prices editor (inline in product modal)
+// Stripe product/price browser — fully dynamic, no hardcoded values
 // ---------------------------------------------------------------------------
 
 type ProductPrice = {
   id: string;
   label: string;
   stripePriceId: string;
+  stripeProductId?: string;
   mode: "test" | "live";
   amount: number;
   currency: string;
@@ -177,29 +81,23 @@ type ProductPrice = {
   isDefault: boolean;
 };
 
-type PriceForm = {
-  label: string;
-  stripePriceId: string;
-  mode: "test" | "live";
-  amount: string;
-  currency: string;
-  interval: string;
-  startDate: string;
-  endDate: string;
-  isDefault: boolean;
+type StripeProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  images: string[];
 };
 
-const emptyPriceForm: PriceForm = {
-  label: "",
-  stripePriceId: "",
-  mode: "test",
-  amount: "0",
-  currency: "USD",
-  interval: "",
-  startDate: new Date().toISOString().slice(0, 10),
-  endDate: "",
-  isDefault: false,
+type StripePrice = {
+  id: string;
+  amount: number;
+  currency: string;
+  interval: string | null;
+  nickname: string | null;
+  type: string;
 };
+
+type BrowseStep = "idle" | "products" | "prices";
 
 function isActive(price: ProductPrice): boolean {
   const now = new Date();
@@ -208,93 +106,180 @@ function isActive(price: ProductPrice): boolean {
   return true;
 }
 
-function ProductPricesEditor({ productId }: { productId: string }) {
+function formatAmount(
+  amount: number,
+  currency: string,
+  interval: string | null,
+) {
+  const formatted = `${currency} ${amount.toFixed(2)}`;
+  return interval ? `${formatted}/${interval}` : formatted;
+}
+
+function ProductPricesEditor({
+  productId,
+  onPendingChange,
+}: {
+  productId?: string;
+  onPendingChange?: (prices: Record<string, unknown>[]) => void;
+}) {
+  const isLocal = !productId;
   const [prices, setPrices] = useState<ProductPrice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [form, setForm] = useState<PriceForm>(emptyPriceForm);
+  const [loading, setLoading] = useState(!isLocal);
+
+  // Browse state
+  const [step, setStep] = useState<BrowseStep>("idle");
+  const [stripeProducts, setStripeProducts] = useState<StripeProduct[]>([]);
+  const [stripePrices, setStripePrices] = useState<StripePrice[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<StripeProduct | null>(
+    null,
+  );
+  const [stripeMode, setStripeMode] = useState<"test" | "live">("test");
+  const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [localCounter, setLocalCounter] = useState(0);
 
-  const endpoint = `/api/products/${productId}/prices`;
+  const endpoint = productId ? `/api/products/${productId}/prices` : "";
 
+  // Load existing prices for saved products
   useEffect(() => {
+    if (!productId) return;
     apiGet<{ items: ProductPrice[] }>(endpoint)
       .then((res) => {
         if (res.ok && res.data) setPrices(res.data.items);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [endpoint]);
+  }, [endpoint, productId]);
 
-  function startCreate() {
-    setEditing("new");
-    setForm(emptyPriceForm);
+  // --- Step 1: Load Stripe products ---
+  async function openBrowser() {
+    setStep("products");
+    setFetching(true);
     setMessage("");
+    setSearchQuery("");
+    try {
+      const res = await apiGet<{
+        items: StripeProduct[];
+        mode: "test" | "live";
+      }>("/api/stripe/products");
+      if (res.ok && res.data) {
+        setStripeProducts(res.data.items);
+        setStripeMode(res.data.mode);
+      } else {
+        setMessage(
+          "Failed to load Stripe products. Check your API key in Settings.",
+        );
+        setStep("idle");
+      }
+    } catch {
+      setMessage("Failed to connect to Stripe.");
+      setStep("idle");
+    } finally {
+      setFetching(false);
+    }
   }
 
-  function startEdit(price: ProductPrice) {
-    setEditing(price.id);
-    setForm({
-      label: price.label,
-      stripePriceId: price.stripePriceId,
-      mode: price.mode,
-      amount: String(price.amount),
-      currency: price.currency,
-      interval: price.interval ?? "",
-      startDate: price.startDate
-        ? new Date(price.startDate).toISOString().slice(0, 10)
-        : "",
-      endDate: price.endDate
-        ? new Date(price.endDate).toISOString().slice(0, 10)
-        : "",
-      isDefault: price.isDefault,
-    });
+  // --- Step 2: Select a product, load its prices ---
+  async function selectProduct(product: StripeProduct) {
+    setSelectedProduct(product);
+    setStep("prices");
+    setFetching(true);
     setMessage("");
+    try {
+      const res = await apiGet<{
+        product: StripeProduct;
+        prices: StripePrice[];
+        mode: "test" | "live";
+      }>(`/api/stripe/products/${encodeURIComponent(product.id)}`);
+      if (res.ok && res.data) {
+        setStripePrices(res.data.prices);
+        setStripeMode(res.data.mode);
+      } else {
+        setMessage("Failed to load prices for this product.");
+        setStep("products");
+      }
+    } catch {
+      setMessage("Failed to fetch prices from Stripe.");
+      setStep("products");
+    } finally {
+      setFetching(false);
+    }
   }
 
-  function cancel() {
-    setEditing(null);
-    setForm(emptyPriceForm);
-    setMessage("");
+  // --- Step 3: Add a Stripe price ---
+  function toPendingPayload(list: ProductPrice[]) {
+    return list.map((p) => ({
+      label: p.label,
+      stripePriceId: p.stripePriceId,
+      stripeProductId: p.stripeProductId,
+      mode: p.mode,
+      amount: p.amount,
+      currency: p.currency,
+      interval: p.interval,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      isDefault: p.isDefault,
+    })) as Record<string, unknown>[];
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
+  async function addPrice(stripePrice: StripePrice) {
+    if (!selectedProduct) return;
     setMessage("");
 
-    const payload = {
-      label: form.label,
-      stripePriceId: form.stripePriceId,
-      mode: form.mode,
-      amount: parseFloat(form.amount),
-      currency: form.currency,
-      interval: form.interval || undefined,
-      startDate: form.startDate || undefined,
-      endDate: form.endDate || undefined,
-      isDefault: form.isDefault,
+    // Check if already added
+    if (prices.some((p) => p.stripePriceId === stripePrice.id)) {
+      setMessage("This price is already added.");
+      return;
+    }
+
+    const label =
+      stripePrice.nickname ||
+      `${selectedProduct.name} — ${formatAmount(stripePrice.amount, stripePrice.currency, stripePrice.interval)}`;
+
+    const newPrice: ProductPrice = {
+      id: isLocal ? `pending-${localCounter}` : "",
+      label,
+      stripePriceId: stripePrice.id,
+      stripeProductId: selectedProduct.id,
+      mode: stripeMode,
+      amount: stripePrice.amount,
+      currency: stripePrice.currency,
+      interval: stripePrice.interval,
+      startDate: new Date().toISOString().slice(0, 10),
+      endDate: null,
+      isDefault: prices.length === 0,
     };
 
+    if (isLocal) {
+      setLocalCounter((c) => c + 1);
+      const next = [...prices, newPrice];
+      setPrices(next);
+      onPendingChange?.(toPendingPayload(next));
+      closeBrowser();
+      setMessage("Price added (will be saved with the product).");
+      return;
+    }
+
+    // API mode
+    setSaving(true);
     try {
-      if (editing === "new") {
-        const result = await apiPost<ProductPrice>(endpoint, payload);
-        if (result.ok && result.data)
-          setPrices((prev) => [result.data as ProductPrice, ...prev]);
-      } else {
-        const result = await apiPut<ProductPrice>(
-          `${endpoint}/${editing}`,
-          payload,
-        );
-        if (result.ok && result.data)
-          setPrices((prev) =>
-            prev.map((p) =>
-              p.id === editing ? (result.data as ProductPrice) : p,
-            ),
-          );
+      const result = await apiPost<ProductPrice>(endpoint, {
+        label: newPrice.label,
+        stripePriceId: newPrice.stripePriceId,
+        stripeProductId: newPrice.stripeProductId,
+        mode: newPrice.mode,
+        amount: newPrice.amount,
+        currency: newPrice.currency,
+        interval: newPrice.interval,
+        startDate: newPrice.startDate,
+        isDefault: newPrice.isDefault,
+      });
+      if (result.ok && result.data) {
+        setPrices((prev) => [...prev, result.data as ProductPrice]);
       }
-      setEditing(null);
-      setForm(emptyPriceForm);
+      closeBrowser();
       setMessage("Price saved.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to save.");
@@ -304,6 +289,12 @@ function ProductPricesEditor({ productId }: { productId: string }) {
   }
 
   async function handleDelete(id: string) {
+    if (isLocal) {
+      const next = prices.filter((p) => p.id !== id);
+      setPrices(next);
+      onPendingChange?.(toPendingPayload(next));
+      return;
+    }
     try {
       await apiDelete(`${endpoint}/${id}`);
       setPrices((prev) => prev.filter((p) => p.id !== id));
@@ -312,195 +303,217 @@ function ProductPricesEditor({ productId }: { productId: string }) {
     }
   }
 
-  const inputClass =
-    "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
+  function closeBrowser() {
+    setStep("idle");
+    setStripeProducts([]);
+    setStripePrices([]);
+    setSelectedProduct(null);
+    setSearchQuery("");
+  }
+
+  const filteredProducts = searchQuery
+    ? stripeProducts.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.id.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : stripeProducts;
 
   if (loading) return <p className="text-xs text-gray-400">Loading prices…</p>;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-gray-800">Prices</h4>
-        <button
-          type="button"
-          onClick={startCreate}
-          className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-        >
-          + Add Price
-        </button>
+        <h4 className="text-sm font-semibold text-gray-800">
+          Stripe Prices
+          <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-normal text-gray-500">
+            {stripeMode} mode
+          </span>
+        </h4>
+        {step === "idle" && (
+          <button
+            type="button"
+            onClick={openBrowser}
+            className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            + Add from Stripe
+          </button>
+        )}
       </div>
 
       {message && (
         <p
-          className={`text-xs ${message.includes("saved") ? "text-green-600" : "text-red-600"}`}
+          className={`text-xs ${message.includes("saved") || message.includes("added") ? "text-green-600" : "text-red-600"}`}
         >
           {message}
         </p>
       )}
 
-      {editing !== null && (
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3"
-        >
-          <p className="text-xs font-semibold text-gray-700">
-            {editing === "new" ? "New Price" : "Edit Price"}
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="block text-xs font-medium text-gray-600">
-                Label
-              </label>
-              <input
-                type="text"
-                value={form.label}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, label: e.target.value }))
-                }
-                placeholder="e.g. Monthly 2024"
-                required
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600">
-                Stripe Price ID
-              </label>
-              <input
-                type="text"
-                value={form.stripePriceId}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, stripePriceId: e.target.value }))
-                }
-                placeholder="price_..."
-                required
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600">
-                Mode
-              </label>
-              <select
-                value={form.mode}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    mode: e.target.value as "test" | "live",
-                  }))
-                }
-                className={inputClass}
-              >
-                <option value="test">Test</option>
-                <option value="live">Live</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600">
-                Amount
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.amount}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, amount: e.target.value }))
-                }
-                required
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600">
-                Currency
-              </label>
-              <input
-                type="text"
-                value={form.currency}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, currency: e.target.value }))
-                }
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600">
-                Interval
-              </label>
-              <select
-                value={form.interval}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, interval: e.target.value }))
-                }
-                className={inputClass}
-              >
-                <option value="">None (one-time)</option>
-                <option value="month">Month</option>
-                <option value="year">Year</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, startDate: e.target.value }))
-                }
-                required
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={form.endDate}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, endDate: e.target.value }))
-                }
-                className={inputClass}
-              />
-            </div>
-          </div>
-          <label className="flex items-center gap-2 text-xs text-gray-700">
-            <input
-              type="checkbox"
-              checked={form.isDefault}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, isDefault: e.target.checked }))
-              }
-              className="rounded border-gray-300"
-            />
-            Default price
-          </label>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {saving ? "Saving…" : "Save"}
-            </button>
+      {/* ---- Product browser ---- */}
+      {step === "products" && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-gray-700">
+              Select a Stripe Product
+            </p>
             <button
               type="button"
-              onClick={cancel}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              onClick={closeBrowser}
+              className="text-xs text-gray-500 hover:text-gray-700"
             >
               Cancel
             </button>
           </div>
-        </form>
+
+          {fetching ? (
+            <p className="text-xs text-gray-400">
+              Loading products from Stripe…
+            </p>
+          ) : (
+            <>
+              {stripeProducts.length > 5 && (
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products…"
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              )}
+              {filteredProducts.length === 0 ? (
+                <p className="text-xs text-gray-400">
+                  {stripeProducts.length === 0
+                    ? "No products found in Stripe. Create one in your Stripe Dashboard first."
+                    : "No products match your search."}
+                </p>
+              ) : (
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {filteredProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => selectProduct(product)}
+                      className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {product.name}
+                        </p>
+                        {product.description && (
+                          <p className="text-xs text-gray-500 truncate">
+                            {product.description}
+                          </p>
+                        )}
+                      </div>
+                      <span className="shrink-0 font-mono text-[10px] text-gray-400">
+                        {product.id}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
 
+      {/* ---- Price picker ---- */}
+      {step === "prices" && selectedProduct && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-700 truncate">
+                {selectedProduct.name}
+              </p>
+              {selectedProduct.description && (
+                <p className="text-[11px] text-gray-500 truncate">
+                  {selectedProduct.description}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep("products")}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={closeBrowser}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          {fetching ? (
+            <p className="text-xs text-gray-400">Loading prices…</p>
+          ) : stripePrices.length === 0 ? (
+            <p className="text-xs text-gray-400">
+              No active prices found for this product. Create one in your Stripe
+              Dashboard.
+            </p>
+          ) : (
+            <div className="space-y-1">
+              <p className="text-[11px] text-gray-500">
+                Click a price to add it:
+              </p>
+              {stripePrices.map((sp) => {
+                const alreadyAdded = prices.some(
+                  (p) => p.stripePriceId === sp.id,
+                );
+                return (
+                  <button
+                    key={sp.id}
+                    type="button"
+                    disabled={alreadyAdded || saving}
+                    onClick={() => addPrice(sp)}
+                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left transition ${
+                      alreadyAdded
+                        ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                        : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatAmount(sp.amount, sp.currency, sp.interval)}
+                      </span>
+                      {sp.nickname && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          {sp.nickname}
+                        </span>
+                      )}
+                      <span className="ml-2 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-500">
+                        {sp.interval ? "recurring" : "one-time"}
+                      </span>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-gray-400">
+                        {sp.id}
+                      </span>
+                      {alreadyAdded ? (
+                        <span className="text-[10px] text-green-600">
+                          Added
+                        </span>
+                      ) : (
+                        <span className="text-xs text-blue-600">+ Add</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---- Added prices table ---- */}
       {prices.length === 0 ? (
         <p className="text-xs text-gray-400">
-          No prices configured. Legacy product price fields will be used at
-          checkout.
+          No prices configured. Add a Stripe price to enable checkout.
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-gray-200 text-xs">
@@ -547,10 +560,7 @@ function ProductPricesEditor({ productId }: { productId: string }) {
                     </span>
                   </td>
                   <td className="px-3 py-1.5 text-gray-700">
-                    {price.currency} {price.amount.toFixed(2)}
-                    {price.interval && (
-                      <span className="text-gray-400">/{price.interval}</span>
-                    )}
+                    {formatAmount(price.amount, price.currency, price.interval)}
                   </td>
                   <td className="px-3 py-1.5">
                     <span
@@ -566,17 +576,10 @@ function ProductPricesEditor({ productId }: { productId: string }) {
                   <td className="px-3 py-1.5 text-right">
                     <button
                       type="button"
-                      onClick={() => startEdit(price)}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => handleDelete(price.id)}
-                      className="ml-2 text-red-600 hover:underline"
+                      className="text-red-600 hover:underline"
                     >
-                      Delete
+                      Remove
                     </button>
                   </td>
                 </tr>
@@ -601,16 +604,15 @@ export default function ProductsPage() {
       fields={productFields}
       getTitle={(item) => String(item.name)}
       getSubtitle={(item) =>
-        `${item.slug} · $${item.price}${item.paymentModel === "recurring" ? `/${item.interval}` : ""} · ${item.type}`
+        `${item.slug} · $${item.price}${item.paymentModel === "recurring" ? "/mo" : ""} · ${item.type}`
       }
       emptyItem={emptyProduct}
       renderEditorExtra={(item, setField) => (
         <div className="col-span-2 mt-4 space-y-6 border-t border-gray-200 pt-4">
-          <FileUrlsEditor
-            urls={(item.fileUrls as string[]) ?? []}
-            onChange={(urls) => setField("fileUrls", urls)}
+          <ProductPricesEditor
+            productId={item.id as string | undefined}
+            onPendingChange={(prices) => setField("prices", prices)}
           />
-          {item.id && <ProductPricesEditor productId={item.id} />}
         </div>
       )}
     />

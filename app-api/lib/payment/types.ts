@@ -1,4 +1,6 @@
-import type { PaymentConfig } from "@/types";
+import type { PaymentConfig, StripeSubscription, StripeInvoice } from "@/types";
+
+export type { StripeSubscription, StripeInvoice };
 
 export type ProviderLineItem = {
   priceId: string;
@@ -27,36 +29,14 @@ export type VerifiedSession = {
   customerId: string | null;
   customerEmail: string | null;
   customerName: string | null;
+  subscriptionId: string | null;
+  paymentIntentId: string | null;
   metadata: Record<string, string>;
   lineItems: { priceId: string; quantity: number }[];
 };
 
 export type BillingPortalResult = {
   url: string;
-};
-
-export type StripeSubscription = {
-  id: string;
-  status: string;
-  currentPeriodEnd: number;
-  cancelAtPeriodEnd: boolean;
-  interval: string | null; // derived from Stripe price (month | year | week | day)
-  items: { priceId: string; productId: string }[];
-};
-
-export type StripeInvoice = {
-  id: string;
-  status: string; // draft | open | paid | void | uncollectible
-  amountPaid: number; // in major currency units (e.g. dollars)
-  currency: string;
-  subscriptionId: string | null;
-  stripeProductId: string | null; // first line item product
-  stripePriceId: string | null; // first line item price
-  periodStart: number;
-  periodEnd: number;
-  hostedUrl: string | null;
-  pdfUrl: string | null;
-  created: number;
 };
 
 export interface PaymentProviderInterface {

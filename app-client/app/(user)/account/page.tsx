@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { userAuthService } from "@/services/user-auth-service";
-import { billingService, type BillingStatus } from "@/services/billing-service";
-import type { AppUser, UpdateUserProfileInput } from "@/types";
+import { billingService } from "@/services/billing-service";
+import type { AppUser, UpdateUserProfileInput, BillingStatus } from "@/types";
 
 export default function AccountPage() {
   const [user, setUser] = useState<AppUser | null>(null);

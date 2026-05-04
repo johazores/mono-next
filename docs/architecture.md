@@ -83,6 +83,8 @@ app-api/
 │   ├── purchase.ts    <- PurchaseStatus, PurchaseRecord
 │   ├── purchase-file.ts <- PurchaseFileRecord, CreatePurchaseFileInput
 │   ├── payment.ts     <- PaymentMode, PaymentConfig, PublicPaymentConfig, CheckoutItem, CheckoutSessionRecord, CreateCheckoutInput, CheckoutResult
+│   ├── billing.ts     <- StripeSubscription, StripeInvoice, BillingStatus
+│   ├── stripe.ts      <- StripeProductSummary, StripePriceSummary, StripePriceLookup, StripeProductListResult, StripeProductDetailResult
 │   ├── membership.ts  <- MembershipType, MembershipStatus, MembershipRecord
 │   ├── feature.ts     <- FeatureRecord, FeatureDefinition, FeatureCheckResult
 │   ├── report.ts      <- RevenueSummary, SubscriptionStats, PurchaseStats, UserStats, UserActivityReport
@@ -120,7 +122,7 @@ app-api/
 - **Payment integration**: Strategy pattern via `PaymentProviderInterface`. Raw `fetch` to Stripe API (no SDK). Provider-agnostic `CreateSessionInput`/`VerifiedSession` types. Test/live mode toggled via admin settings. Stripe collects email, name, and billing info — no redundant guest forms. WooCommerce provider placeholder included for future expansion.
 - **Billing sync**: `billingService` syncs Stripe subscriptions and invoices to local Purchase records. Automatic background sync triggers on login, `/me` session checks, and admin user views with a 5-minute per-user throttle. Users can force-sync from the account page. Billing interval is derived from Stripe price data (not local product configuration).
 - **Checkout flow**: Cart → Stripe Checkout → success page → verify session → create purchases. Guest checkout creates a user account from Stripe-provided email. Recurring products require login. `CheckoutSession` DB record links the Stripe session to internal items.
-- **Product pricing**: Multiple Stripe price IDs per product with date ranges and default flag. `ProductPrice` table checked first at checkout; falls back to legacy single-price fields on Product.
+- **Product pricing**: Multiple Stripe price IDs per product with date ranges and default flag. `ProductPrice` table is the sole source for Stripe price resolution at checkout. Admin UI browses Stripe products and prices dynamically via dedicated catalog endpoints.
 - **File downloads**: `PurchaseFile` stores base64-encoded files linked to purchases. Authenticated download endpoint verifies ownership and returns binary data.
 - **Membership-based access**: Purchases grant feature access via Membership records. Feature checks resolve direct membership keys first, then inherited parent features. `getEnabledFeatures()` correctly marks a sub-user's own memberships as `"direct"` and parent-inherited ones as `"inherited"`.
 - **Feature flags**: Feature definitions stored in DB with in-memory cache. `featureService.checkAccess()` checks direct and inherited sources.
@@ -135,7 +137,7 @@ app-api/
   - `AdminSession` — Admin auth sessions (adminId -> Admin, tokenHash, expiresAt)
   - `User` — Application users (env, name, email, passwordHash, clerkId, stripeCustomerId, status, parentId -> User, ancestors, failedLoginAttempts, lockedUntil, lastLoginAt) `@@unique([env, email])` `@@index([env, clerkId])`
   - `UserSession` — User auth sessions (env, userId -> User, tokenHash, expiresAt)
-  - `Product` — Purchasable items (env, name, slug, description, type, price, currency, paymentModel, interval, maxSubUsers, fileUrls, accessKeys, stripeTestProductId, stripeTestPriceId, stripeLiveProductId, stripeLivePriceId, metadata, isActive, sortOrder) `@@unique([env, slug])`
+  - `Product` — Purchasable items (env, name, slug, description, type, price, currency, paymentModel, maxSubUsers, accessKeys, stripeTestProductId, stripeLiveProductId, metadata, isActive, sortOrder) `@@unique([env, slug])`
   - `ProductPrice` — Multiple Stripe prices per product with date ranges (env, productId -> Product, label, stripePriceId, mode test|live, amount, currency, interval, startDate, endDate, isDefault, metadata). Active price resolved at checkout by date range and default flag.
   - `Purchase` — User purchases and subscriptions (env, userId -> User, productId -> Product, status, amount, currency, externalId, startDate, endDate, cancelledAt, metadata)
   - `PurchaseFile` — Downloadable files attached to purchases (env, purchaseId -> Purchase, fileName, mimeType, sizeBytes, data as base64, metadata). Served as binary downloads via authenticated endpoint.
@@ -191,7 +193,7 @@ app-client/
 │   ├── auth/          <- Auth provider context (AuthConfigProvider, ClerkSignIn, ClerkSignUp)
 │   └── admin/         <- Resource CRUD components (ResourceManager, ResourceEditor, ResourceList, FieldRenderer)
 ├── hooks/             <- Custom React hooks (useAdminResource, useCart)
-├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, feature-service, sub-user-service, purchase-service, report-service, activity-log-service, setting-service, admin-setting-service, checkout-service, download-service)
+├── services/          <- API client layer (api-client, auth-service, user-auth-service, resource-service, feature-service, sub-user-service, purchase-service, billing-service, report-service, activity-log-service, setting-service, admin-setting-service, checkout-service, download-service)
 └── types/             <- Shared type definitions (barrel-exported via index.ts)
     ├── api.ts         <- ApiResult<T>, ApiRequestOptions, ResourceListResult<T>
     ├── resource.ts    <- ResourceField, ResourceItem, FieldType, EditorSection, FieldRendererProps, DynamicOption, ResourceManagerProps, ResourceEditorProps, ResourceListProps
@@ -201,9 +203,10 @@ app-client/
     ├── user.ts        <- AppUser, UpdateUserProfileInput
     ├── sub-user.ts    <- SubUser, CreateSubUserInput
     ├── feature.ts     <- FeatureFlag (key, description, category, enabled, source)
-    ├── product.ts     <- Product
+    ├── product.ts     <- Product, ProductType, PaymentModel
     ├── purchase.ts    <- Purchase
     ├── checkout.ts    <- CartItem, CheckoutRequest, CheckoutResponse, CheckoutVerifyResponse, PublicPaymentConfig
+    ├── billing.ts     <- StripeSubscription, StripeInvoice, BillingStatus
     ├── download.ts    <- PurchaseDownload, DownloadFile
     ├── report.ts      <- AdminReport, ReportPeriod, ProductBreakdown, SubscriptionBreakdown
     ├── activity-log.ts <- ActivityLogEntry, ActivityLogList

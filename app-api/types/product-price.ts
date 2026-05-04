@@ -27,6 +27,7 @@ export type CreateProductPriceInput = {
   startDate?: string;
   endDate?: string;
   isDefault?: boolean;
+  stripeProductId?: string;
   metadata?: Record<string, unknown>;
 };
 

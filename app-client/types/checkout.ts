@@ -6,8 +6,7 @@ export type CartItem = {
     price: number;
     currency: string;
     type: string;
-    paymentModel: string;
-    interval: string | null;
+    paymentModel: "one-time" | "recurring";
     description: string | null;
   };
   quantity: number;

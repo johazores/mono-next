@@ -2,19 +2,11 @@ import { userRepository } from "@/repositories/user-repository";
 import { purchaseRepository } from "@/repositories/purchase-repository";
 import { productRepository } from "@/repositories/product-repository";
 import { getPaymentProvider, getPaymentConfig } from "@/lib/payment";
-import type { StripeSubscription, StripeInvoice } from "@/lib/payment/types";
+import type { BillingStatus, StripeSubscription, StripeInvoice } from "@/types";
 
 // Throttle sync per user — skip if synced within the last 5 minutes
 const SYNC_THROTTLE_MS = 5 * 60 * 1000;
 const lastSyncMap = new Map<string, number>();
-
-export type BillingStatus = {
-  hasStripeCustomer: boolean;
-  portalUrl: string | null;
-  subscriptions: StripeSubscription[];
-  invoices: StripeInvoice[];
-  syncedAt: string | null;
-};
 
 export const billingService = {
   /**
@@ -138,18 +130,16 @@ export const billingService = {
       provider.getCustomerInvoices(user.stripeCustomerId, config),
     ]);
 
-    // Build a lookup of local products by Stripe product/price ID
+    // Build a lookup of local products by Stripe product ID
     const allProducts = await productRepository.listAll();
     const productByStripeId = new Map<string, (typeof allProducts)[0]>();
     for (const p of allProducts) {
       if (config.mode === "live") {
         if (p.stripeLiveProductId)
           productByStripeId.set(p.stripeLiveProductId, p);
-        if (p.stripeLivePriceId) productByStripeId.set(p.stripeLivePriceId, p);
       } else {
         if (p.stripeTestProductId)
           productByStripeId.set(p.stripeTestProductId, p);
-        if (p.stripeTestPriceId) productByStripeId.set(p.stripeTestPriceId, p);
       }
     }
 
@@ -195,6 +185,7 @@ export const billingService = {
 
       await upsertPurchase(userId, localProduct.id, {
         externalId: inv.id,
+        paymentIntentId: inv.paymentIntentId,
         amount: inv.amountPaid,
         currency: inv.currency,
         status: "completed",
@@ -272,6 +263,7 @@ async function upsertPurchase(
   productId: string,
   data: {
     externalId: string;
+    paymentIntentId?: string | null;
     amount: number;
     currency: string;
     status: string;
@@ -281,7 +273,14 @@ async function upsertPurchase(
     metadata?: Record<string, unknown>;
   },
 ) {
-  const existing = await purchaseRepository.findByExternalId(data.externalId);
+  // Check by primary externalId first
+  let existing = await purchaseRepository.findByExternalId(data.externalId);
+
+  // Also check if the purchase was created via checkout with the payment
+  // intent ID as its externalId (checkout uses pi_xxx, invoices use in_xxx).
+  if (!existing && data.paymentIntentId) {
+    existing = await purchaseRepository.findByExternalId(data.paymentIntentId);
+  }
 
   if (existing) {
     return purchaseRepository.update(existing.id, {

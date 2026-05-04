@@ -11,19 +11,15 @@ import type { CreateSessionInput } from "@/lib/payment/types";
 
 /**
  * Resolve the active Stripe price ID for a product.
- * First checks ProductPrice records for a date-active price in the current mode.
- * Falls back to the legacy single-price fields on Product.
+ * Looks up ProductPrice records for a date-active price in the current mode.
  */
 async function resolveStripePriceId(
   product: {
     id: string;
     name: string;
-    stripeTestPriceId: string | null;
-    stripeLivePriceId: string | null;
   },
   mode: PaymentMode,
 ): Promise<{ priceId: string; amount: number | null }> {
-  // Try ProductPrice table first
   const activePrice = await productPriceRepository.findActivePrice(
     product.id,
     mode,
@@ -32,15 +28,9 @@ async function resolveStripePriceId(
     return { priceId: activePrice.stripePriceId, amount: activePrice.amount };
   }
 
-  // Fallback to legacy single-price fields
-  const priceId =
-    mode === "test" ? product.stripeTestPriceId : product.stripeLivePriceId;
-  if (!priceId) {
-    throw new Error(
-      `Product "${product.name}" has no Stripe ${mode} price ID configured.`,
-    );
-  }
-  return { priceId, amount: null };
+  throw new Error(
+    `Product "${product.name}" has no active Stripe ${mode} price configured. Add a ProductPrice record.`,
+  );
 }
 
 export const checkoutService = {
@@ -228,8 +218,14 @@ export const checkoutService = {
     }
 
     for (const item of items) {
+      // Use the Stripe subscription or payment intent ID as externalId so
+      // billing sync (which upserts by sub/invoice ID) recognises the same
+      // purchase and updates it instead of creating a duplicate.
+      const externalId =
+        verified.subscriptionId || verified.paymentIntentId || sessionId;
+
       const purchase = await purchaseService.create(userId, item.productId, {
-        externalId: sessionId,
+        externalId,
       });
       purchases.push(purchase);
     }

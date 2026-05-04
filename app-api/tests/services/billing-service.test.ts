@@ -170,9 +170,7 @@ describe("billingService.syncPurchases", () => {
         price: 9.99,
         currency: "USD",
         stripeTestProductId: "prod_stripe_1",
-        stripeTestPriceId: "price_test_1",
         stripeLiveProductId: null,
-        stripeLivePriceId: null,
       },
     ] as never);
     purchaseRepo.findByExternalId.mockResolvedValue(null);
@@ -212,9 +210,7 @@ describe("billingService.syncPurchases", () => {
         price: 9.99,
         currency: "USD",
         stripeTestProductId: "prod_stripe_1",
-        stripeTestPriceId: null,
         stripeLiveProductId: null,
-        stripeLivePriceId: null,
       },
     ] as never);
     purchaseRepo.findByExternalId.mockResolvedValue({
@@ -270,9 +266,7 @@ describe("billingService.syncPurchases", () => {
         price: 9.99,
         currency: "USD",
         stripeTestProductId: "prod_stripe_1",
-        stripeTestPriceId: "price_test_1",
         stripeLiveProductId: null,
-        stripeLivePriceId: null,
       },
     ] as never);
     purchaseRepo.findByExternalId.mockResolvedValue(null);
@@ -316,9 +310,7 @@ describe("billingService.syncPurchases", () => {
         price: 49.99,
         currency: "USD",
         stripeTestProductId: "prod_stripe_2",
-        stripeTestPriceId: null,
         stripeLiveProductId: null,
-        stripeLivePriceId: null,
       },
     ] as never);
     purchaseRepo.findByExternalId.mockResolvedValue(null);

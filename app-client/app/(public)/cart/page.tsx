@@ -90,9 +90,7 @@ export default function CartPage() {
               <p className="font-medium text-gray-900">{item.product.name}</p>
               <p className="text-sm text-gray-500">
                 {formatPrice(item.product.price, item.product.currency)}
-                {item.product.paymentModel === "recurring" &&
-                  item.product.interval &&
-                  `/${item.product.interval}`}
+                {item.product.paymentModel === "recurring" && "/mo"}
               </p>
             </div>
             {item.product.paymentModel !== "recurring" && (

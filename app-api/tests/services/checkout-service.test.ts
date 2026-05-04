@@ -72,14 +72,10 @@ function fakeProduct(overrides = {}) {
     price: 9.99,
     currency: "USD",
     paymentModel: "recurring",
-    interval: "month",
     maxSubUsers: 3,
-    fileUrls: [],
     accessKeys: ["storage.5gb"],
     stripeTestProductId: "prod_test_123",
-    stripeTestPriceId: "price_test_123",
     stripeLiveProductId: "prod_live_123",
-    stripeLivePriceId: "price_live_123",
     isActive: true,
     sortOrder: 1,
     metadata: null,
@@ -111,8 +107,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetProvider.mockReturnValue(mockProvider);
   mockGetConfig.mockResolvedValue(fakeConfig());
-  // Default: no ProductPrice records — uses legacy fallback
-  priceRepo.findActivePrice.mockResolvedValue(null as never);
+  // Default: ProductPrice record returns an active price
+  priceRepo.findActivePrice.mockResolvedValue({
+    id: "pp-1",
+    productId: "prod-1",
+    stripePriceId: "price_test_123",
+    mode: "test",
+    amount: 9.99,
+  } as never);
   // Default: authenticated user lookup
   userRepo.findById.mockResolvedValue({
     id: "user-1",
@@ -225,10 +227,9 @@ describe("checkoutService.createSession", () => {
     ).rejects.toThrow("no longer available");
   });
 
-  it("throws when stripe price ID is missing", async () => {
-    productRepo.findById.mockResolvedValue(
-      fakeProduct({ stripeTestPriceId: null }) as never,
-    );
+  it("throws when no active price is configured", async () => {
+    productRepo.findById.mockResolvedValue(fakeProduct() as never);
+    priceRepo.findActivePrice.mockResolvedValue(null);
 
     await expect(
       checkoutService.createSession({
@@ -236,7 +237,7 @@ describe("checkoutService.createSession", () => {
         successUrl: "http://localhost/success",
         cancelUrl: "http://localhost/cancel",
       }),
-    ).rejects.toThrow("no Stripe test price ID");
+    ).rejects.toThrow("no active Stripe test price configured");
   });
 
   it("throws when payment is not configured", async () => {
@@ -255,6 +256,13 @@ describe("checkoutService.createSession", () => {
     mockGetConfig.mockResolvedValue({ ...fakeConfig(), mode: "live" });
     const product = fakeProduct();
     productRepo.findById.mockResolvedValue(product as never);
+    priceRepo.findActivePrice.mockResolvedValue({
+      id: "pp-live",
+      productId: "prod-1",
+      stripePriceId: "price_live_123",
+      mode: "live",
+      amount: 9.99,
+    } as never);
     mockProvider.createCheckoutSession.mockResolvedValue({
       sessionId: "cs_live",
       redirectUrl: "https://checkout.stripe.com/pay/cs_live",
@@ -280,8 +288,8 @@ describe("checkoutService.createSession", () => {
     );
   });
 
-  it("uses ProductPrice record when available instead of legacy fields", async () => {
-    const product = fakeProduct({ stripeTestPriceId: "legacy_price_test" });
+  it("uses ProductPrice record when available", async () => {
+    const product = fakeProduct();
     productRepo.findById.mockResolvedValue(product as never);
 
     // ProductPrice table returns an active price

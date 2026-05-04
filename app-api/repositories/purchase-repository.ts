@@ -7,9 +7,7 @@ const productSelect = {
   slug: true,
   type: true,
   price: true,
-  fileUrls: true,
   accessKeys: true,
-  interval: true,
   maxSubUsers: true,
 } as const;
 

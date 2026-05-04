@@ -1,4 +1,5 @@
 import { productRepository } from "@/repositories/product-repository";
+import { productPriceService } from "@/services/product-price-service";
 import type {
   CreateProductInput,
   UpdateProductInput,
@@ -8,7 +9,6 @@ import type {
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ALLOWED_TYPES = ["physical", "digital", "membership"];
 const ALLOWED_PAYMENT_MODELS = ["one-time", "recurring"];
-const ALLOWED_INTERVALS = ["month", "year"];
 
 function validateSlug(slug: string): string {
   const cleaned = slug.toLowerCase().trim();
@@ -38,7 +38,9 @@ export const productService = {
     return productRepository.findBySlug(slug);
   },
 
-  async create(input: CreateProductInput): Promise<ProductRecord> {
+  async create(
+    input: CreateProductInput & { prices?: Record<string, unknown>[] },
+  ): Promise<ProductRecord> {
     const name = (input.name || "").trim();
     if (name.length < 2 || name.length > 100) {
       throw new Error("Name must be between 2 and 100 characters.");
@@ -61,7 +63,7 @@ export const productService = {
       ? (input.paymentModel ?? "one-time")
       : "one-time";
 
-    return productRepository.create({
+    const product = (await productRepository.create({
       name,
       slug,
       description: input.description || null,
@@ -69,18 +71,34 @@ export const productService = {
       price,
       currency: (input.currency || "USD").toUpperCase().trim(),
       paymentModel,
-      interval:
-        paymentModel === "recurring"
-          ? ALLOWED_INTERVALS.includes(input.interval ?? "month")
-            ? (input.interval ?? "month")
-            : "month"
-          : null,
       maxSubUsers: input.maxSubUsers ?? 0,
-      fileUrls: input.fileUrls ?? [],
       accessKeys: input.accessKeys ?? [],
       sortOrder: input.sortOrder ?? 0,
       metadata: (input.metadata ?? null) as never,
-    }) as Promise<ProductRecord>;
+    })) as ProductRecord;
+
+    // Create embedded prices if provided
+    if (input.prices?.length) {
+      for (const p of input.prices) {
+        await productPriceService.create({
+          productId: product.id,
+          label: String(p.label || ""),
+          stripePriceId: String(p.stripePriceId || ""),
+          mode: (p.mode === "live" ? "live" : "test") as "test" | "live",
+          amount: Number(p.amount) || 0,
+          currency: String(p.currency || "USD"),
+          interval: p.interval ? String(p.interval) : undefined,
+          startDate: p.startDate ? String(p.startDate) : undefined,
+          endDate: p.endDate ? String(p.endDate) : undefined,
+          isDefault: Boolean(p.isDefault),
+          stripeProductId: p.stripeProductId
+            ? String(p.stripeProductId)
+            : undefined,
+        });
+      }
+    }
+
+    return product;
   },
 
   async update(
@@ -128,15 +146,8 @@ export const productService = {
         throw new Error("Invalid payment model.");
       data.paymentModel = input.paymentModel;
     }
-    if (input.fileUrls !== undefined) data.fileUrls = input.fileUrls ?? [];
     if (input.accessKeys !== undefined) data.accessKeys = input.accessKeys;
     if (input.isActive !== undefined) data.isActive = input.isActive;
-    if (input.interval !== undefined) {
-      if (!ALLOWED_INTERVALS.includes(input.interval)) {
-        throw new Error("Interval must be 'month' or 'year'.");
-      }
-      data.interval = input.interval;
-    }
     if (input.maxSubUsers !== undefined) data.maxSubUsers = input.maxSubUsers;
     if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
     if (input.metadata !== undefined)

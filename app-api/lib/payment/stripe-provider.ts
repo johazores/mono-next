@@ -50,6 +50,8 @@ type StripeSession = {
   customer: string | null;
   customer_email: string | null;
   customer_details?: { email: string | null; name: string | null };
+  subscription: string | null;
+  payment_intent: string | null;
   metadata: Record<string, string>;
 };
 
@@ -122,6 +124,8 @@ export const stripeProvider: PaymentProviderInterface = {
       customerEmail:
         session.customer_details?.email ?? session.customer_email ?? null,
       customerName: session.customer_details?.name ?? null,
+      subscriptionId: session.subscription ?? null,
+      paymentIntentId: session.payment_intent ?? null,
       metadata: session.metadata ?? {},
       lineItems: (items.data ?? []).map((li) => ({
         priceId: li.price.id,
@@ -227,6 +231,7 @@ export const stripeProvider: PaymentProviderInterface = {
         amount_paid: number;
         currency: string;
         subscription: string | null;
+        payment_intent: string | null;
         lines: {
           data: {
             price: { id: string; product: string } | null;
@@ -251,6 +256,8 @@ export const stripeProvider: PaymentProviderInterface = {
         amountPaid: inv.amount_paid / 100,
         currency: inv.currency.toUpperCase(),
         subscriptionId: inv.subscription ?? null,
+        paymentIntentId:
+          typeof inv.payment_intent === "string" ? inv.payment_intent : null,
         stripeProductId:
           typeof firstLine?.price?.product === "string"
             ? firstLine.price.product

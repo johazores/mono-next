@@ -29,7 +29,6 @@ function fakeProduct(overrides = {}) {
     price: 49.99,
     currency: "USD",
     paymentModel: "one-time",
-    fileUrls: [],
     accessKeys: [],
     isActive: true,
     metadata: null,

@@ -31,9 +31,7 @@ function ProductCard({
         <span className="text-2xl font-bold text-gray-900">
           {formatPrice(product.price, product.currency)}
         </span>
-        {isRecurring && product.interval && (
-          <span className="text-sm text-gray-500">/{product.interval}</span>
-        )}
+        {isRecurring && <span className="text-sm text-gray-500">/mo</span>}
       </div>
       <div className="mt-1">
         <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">

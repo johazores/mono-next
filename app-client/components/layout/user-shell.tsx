@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { userAuthService } from "@/services/user-auth-service";
 import type { AppUser, NavItem } from "@/types";
@@ -23,13 +23,12 @@ export function UserShell({
   user: AppUser;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const navigation = baseNavigation;
 
   async function handleLogout() {
     await userAuthService.logout();
-    router.replace("/user-login");
+    window.location.href = "/user-login";
   }
 
   const planName = user.activePlan?.name ?? "Free";

@@ -54,7 +54,7 @@ export const purchaseService = {
       endDate: options?.metadata?.endDate
         ? new Date(options.metadata.endDate as string)
         : isSubscription
-          ? computeEndDate(product.interval)
+          ? computeEndDate("month")
           : null,
       metadata: (options?.metadata ?? null) as never,
     });
@@ -104,7 +104,7 @@ export const purchaseService = {
       externalId: options?.externalId || null,
       endDate: options?.endDate
         ? new Date(options.endDate)
-        : computeEndDate(product.interval),
+        : computeEndDate("month"),
     });
 
     // Grant membership from product features

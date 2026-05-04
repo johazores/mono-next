@@ -280,7 +280,6 @@ const fakePurchase = {
     slug: "starter",
     accessKeys: ["storage.5gb", "sub-users.create"],
     maxSubUsers: 3,
-    interval: "month",
   },
   amount: 9.99,
   currency: "USD",

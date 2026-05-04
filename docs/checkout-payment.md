@@ -51,7 +51,7 @@ Payment settings are stored in `SiteSetting` and configured via **Admin > Settin
 The controller validates items and delegates to `checkoutService.createSession()`:
 
 1. Loads and validates all products (exist, are active)
-2. Resolves Stripe price IDs via `ProductPrice` table (falls back to legacy single-price fields)
+2. Resolves Stripe price IDs via `ProductPrice` table
 3. Determines checkout mode: `"subscription"` if any item is recurring, else `"payment"`
 4. Creates a Stripe Checkout session via the payment provider
 5. Stores a `CheckoutSession` record in the database
@@ -100,7 +100,7 @@ The `ProductPrice` model supports multiple Stripe price IDs per product:
 1. Queries `ProductPrice` for active prices matching the product and mode
 2. Active = `startDate <= now` AND (`endDate` is null OR `endDate > now`)
 3. Prefers the default price, then most recent by start date
-4. Falls back to legacy `stripeTestPriceId` / `stripeLivePriceId` fields on Product
+4. Throws if no active `ProductPrice` is configured
 
 ### Admin Management
 
@@ -200,6 +200,13 @@ Stripe subscription and invoice data is synced to local Purchase records to keep
 - **Throttling**: 5-minute per-user cooldown prevents excessive Stripe API calls during automatic sync
 - **Interval source**: Billing interval (month/year) is derived from Stripe's `price.recurring.interval`, not from the local `Product.interval` field
 
+### Purchase Deduplication
+
+Three paths can create Purchase records for the same payment: checkout verification (`cs_xxx`), subscription sync (`sub_xxx`), and invoice sync (`in_xxx`). To prevent duplicates:
+
+- `checkoutService.verifySession` uses `subscriptionId || paymentIntentId || sessionId` as the Purchase `externalId` — matching the IDs billing sync will later use
+- `billingService.upsertPurchase` checks `externalId` before creating and also accepts `paymentIntentId` as a fallback lookup
+
 ### Billing Status
 
 `GET /api/users/auth/billing` returns:
@@ -222,3 +229,15 @@ The system uses a strategy pattern (`PaymentProviderInterface`) with pluggable p
 | `woocommerce` | Placeholder | Commented-out skeleton for future WooCommerce REST API integration |
 
 Provider selection is configured in **Admin > Settings** via `payment.provider`.
+
+## Stripe Catalog Browsing
+
+Admin endpoints for browsing the live Stripe product catalog (read-only):
+
+| Endpoint                          | Method | Description                       |
+| --------------------------------- | ------ | --------------------------------- |
+| `/api/stripe/products`            | GET    | List all active Stripe products   |
+| `/api/stripe/products/:productId` | GET    | Product detail with nested prices |
+| `/api/stripe/prices/:priceId`     | GET    | Individual price lookup           |
+
+All require admin authentication. The admin Products page uses these to browse Stripe and auto-fill product/price configurations.
