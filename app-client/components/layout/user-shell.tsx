@@ -43,7 +43,11 @@ export function UserShell({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
-    await userAuthService.logout();
+    try {
+      await userAuthService.logout();
+    } catch {
+      // Redirect even if the API call fails (expired session, network error)
+    }
     window.location.href = "/user-login";
   }
 

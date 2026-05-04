@@ -18,7 +18,7 @@ import type {
 
 const productFields: ResourceField[] = [
   { name: "name", label: "Name", type: "text" },
-  { name: "slug", label: "Slug", type: "text" },
+  { name: "slug", label: "Slug", type: "slug", slugSource: "name" },
   { name: "description", label: "Description", type: "textarea" },
   {
     name: "type",

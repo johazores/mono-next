@@ -14,8 +14,10 @@ const featureFields: ResourceField[] = [
   {
     name: "category",
     label: "Category",
-    type: "select",
-    options: ["storage", "support", "features"],
+    type: "combobox",
+    suggestionsEndpoint: "/api/admins/features",
+    suggestionsField: "category",
+    help: "Type a category or pick from existing ones.",
   },
   {
     name: "isActive",

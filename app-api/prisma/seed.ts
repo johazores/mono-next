@@ -600,20 +600,9 @@ async function main() {
       pluralName: "Blog Posts",
       description: "Blog articles and news",
       icon: "file-text",
+      // Standard fields (body, excerpt, featuredImage, author, etc.) are
+      // always persisted by the API — only list EXTRA type-specific fields here.
       fields: [
-        {
-          name: "excerpt",
-          label: "Excerpt",
-          type: "textarea",
-          required: false,
-        },
-        { name: "body", label: "Body", type: "rich-text", required: true },
-        {
-          name: "featuredImage",
-          label: "Featured Image",
-          type: "media",
-          required: false,
-        },
         {
           name: "category",
           label: "Category",
@@ -648,25 +637,9 @@ async function main() {
       pluralName: "Services",
       description: "Services offered",
       icon: "briefcase",
+      // Standard fields (body, excerpt, featuredImage, author, etc.) are
+      // always persisted by the API — only list EXTRA type-specific fields here.
       fields: [
-        {
-          name: "excerpt",
-          label: "Excerpt",
-          type: "textarea",
-          required: false,
-        },
-        {
-          name: "body",
-          label: "Description",
-          type: "rich-text",
-          required: true,
-        },
-        {
-          name: "featuredImage",
-          label: "Image",
-          type: "media",
-          required: false,
-        },
         {
           name: "price",
           label: "Starting Price",

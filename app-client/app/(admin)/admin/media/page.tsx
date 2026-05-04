@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import useSWR from "swr";
 import { cmsMediaService } from "@/services/cms-service";
+import { mediaUrl } from "@/lib/media-url";
 import type { MediaItem } from "@/types";
 
 const swrKey = "/api/cms/media";
@@ -25,23 +26,25 @@ export default function MediaPage() {
     setUploading(true);
     setError("");
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        await cmsMediaService.create({
-          fileName: file.name,
-          mimeType: file.type,
-          altText: file.name.replace(/\.[^.]+$/, ""),
-          base64Data: base64,
-        });
-        await mutate();
-        setUploading(false);
-        if (fileRef.current) fileRef.current.value = "";
-      };
-      reader.readAsDataURL(file);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = () => reject(new Error("Failed to read file."));
+        reader.readAsDataURL(file);
+      });
+      await cmsMediaService.create({
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
+        altText: file.name.replace(/\.[^.]+$/, ""),
+        base64Data: base64,
+      });
+      await mutate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
       setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -88,7 +91,7 @@ export default function MediaPage() {
           >
             {item.mimeType?.startsWith("image/") ? (
               <img
-                src={item.url}
+                src={mediaUrl(item.url)}
                 alt={item.altText || item.fileName}
                 className="w-full h-32 object-cover"
               />

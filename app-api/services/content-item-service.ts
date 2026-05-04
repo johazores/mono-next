@@ -45,6 +45,26 @@ function coerceFieldValue(
   return value;
 }
 
+// Standard WordPress-like fields stored in every content item's `data` JSON.
+// These are always persisted regardless of the content type's field definitions.
+const STANDARD_FIELD_NAMES = [
+  "body",
+  "excerpt",
+  "featuredImage",
+  "author",
+  "publishedAt",
+  "visibility",
+  "allowComments",
+  "format",
+  "template",
+] as const;
+
+function coerceStandard(name: string, value: unknown): unknown {
+  if (value === undefined || value === null || value === "") return null;
+  if (name === "allowComments") return value === true || value === "true";
+  return value;
+}
+
 export const contentItemService = {
   listByType(typeSlug: string) {
     return contentItemRepository.listByType(typeSlug);
@@ -91,8 +111,16 @@ export const contentItemService = {
     const sortOrder = Number(input.sortOrder ?? 0);
 
     const data: Record<string, unknown> = {};
+    // Always save standard WordPress-like fields
+    for (const sf of STANDARD_FIELD_NAMES) {
+      data[sf] = coerceStandard(sf, input[sf]);
+    }
+    // Save custom fields defined on the content type
     for (const field of fields) {
-      data[field.name] = coerceFieldValue(field, input[field.name]);
+      // Skip if already handled as a standard field
+      if (!(field.name in data)) {
+        data[field.name] = coerceFieldValue(field, input[field.name]);
+      }
     }
 
     return contentItemRepository.create({
@@ -129,8 +157,15 @@ export const contentItemService = {
     const sortOrder = Number(input.sortOrder ?? 0);
 
     const data: Record<string, unknown> = {};
+    // Always save standard WordPress-like fields
+    for (const sf of STANDARD_FIELD_NAMES) {
+      data[sf] = coerceStandard(sf, input[sf]);
+    }
+    // Save custom fields defined on the content type
     for (const field of fields) {
-      data[field.name] = coerceFieldValue(field, input[field.name]);
+      if (!(field.name in data)) {
+        data[field.name] = coerceFieldValue(field, input[field.name]);
+      }
     }
 
     const updatePayload: Record<string, unknown> = {

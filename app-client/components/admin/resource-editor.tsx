@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { Modal, Button } from "@/components/ui";
 import { FieldRenderer } from "@/components/admin/field-renderer";
+import { slugify } from "@/lib/slugify";
 import type {
   EditorSection,
   ResourceField,
@@ -27,6 +28,7 @@ export function ResourceEditor({
 }: ResourceEditorProps) {
   const [editing, setEditing] = useState<ResourceItem>(item);
   const [activeSection, setActiveSection] = useState<EditorSection>("Basics");
+  const autoSlugRef = useRef<string>("");
 
   const isNew = !item.id;
 
@@ -37,8 +39,38 @@ export function ResourceEditor({
     );
   }, [fields]);
 
+  // Build a map: sourceField → slug field names
+  const slugLinks = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const f of fields) {
+      if (f.type === "slug" && f.slugSource) {
+        if (!map[f.slugSource]) map[f.slugSource] = [];
+        map[f.slugSource].push(f.name);
+      }
+    }
+    return map;
+  }, [fields]);
+
   function setField(name: string, value: unknown) {
-    setEditing((current) => ({ ...current, [name]: value }));
+    setEditing((current) => {
+      const next = { ...current, [name]: value };
+
+      // Auto-populate linked slug fields when source changes
+      const linkedSlugs = slugLinks[name];
+      if (linkedSlugs && typeof value === "string") {
+        const newSlug = slugify(value);
+        for (const slugField of linkedSlugs) {
+          const currentSlug = String(current[slugField] ?? "");
+          // Only auto-set if slug is empty or matches the previously auto-generated value
+          if (!currentSlug || currentSlug === autoSlugRef.current) {
+            next[slugField] = newSlug;
+            autoSlugRef.current = newSlug;
+          }
+        }
+      }
+
+      return next;
+    });
   }
 
   return (
@@ -82,18 +114,21 @@ export function ResourceEditor({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        {fields
-          .filter((field) => getFieldSection(field) === activeSection)
-          .map((field) => (
-            <Fragment key={field.name}>
-              <FieldRenderer
-                field={field}
-                value={editing[field.name] ?? ""}
-                onChange={(val) => setField(field.name, val)}
-              />
-            </Fragment>
-          ))}
+      <div className="rounded-xl border border-border bg-background p-5">
+        <div className="grid grid-cols-2 gap-4">
+          {fields
+            .filter((field) => getFieldSection(field) === activeSection)
+            .map((field) => (
+              <Fragment key={field.name}>
+                <FieldRenderer
+                  field={field}
+                  value={editing[field.name] ?? ""}
+                  onChange={(val) => setField(field.name, val)}
+                  allValues={editing}
+                />
+              </Fragment>
+            ))}
+        </div>
       </div>
 
       {renderExtra && renderExtra(editing, setField)}

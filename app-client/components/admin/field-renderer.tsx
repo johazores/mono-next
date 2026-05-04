@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { resourceService } from "@/services/resource-service";
+import { slugify } from "@/lib/slugify";
 import type { ResourceField, FieldRendererProps, DynamicOption } from "@/types";
 
 function formatDateInput(value: unknown) {
@@ -12,7 +13,12 @@ function formatDateInput(value: unknown) {
 const inputClass =
   "w-full rounded-lg border border-border px-3 py-2 text-sm text-foreground placeholder-muted shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 
-export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
+export function FieldRenderer({
+  field,
+  value,
+  onChange,
+  allValues,
+}: FieldRendererProps) {
   const displayValue = value == null ? "" : String(value);
   const wrapperClass = field.fullWidth ? "col-span-2" : "";
 
@@ -27,19 +33,66 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
     );
   }
 
+  if (field.type === "slug") {
+    const sourceValue =
+      field.slugSource && allValues
+        ? String(allValues[field.slugSource] ?? "")
+        : "";
+    return (
+      <label className={`grid gap-1.5 ${wrapperClass}`}>
+        <span className="text-sm font-medium text-foreground">
+          {field.label}
+        </span>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className={inputClass}
+            value={displayValue}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={
+              sourceValue ? slugify(sourceValue) : "auto-generated-slug"
+            }
+          />
+          <button
+            type="button"
+            className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted hover:bg-surface hover:text-foreground transition-colors"
+            title="Generate from name"
+            onClick={() => {
+              if (sourceValue) onChange(slugify(sourceValue));
+            }}
+          >
+            Generate
+          </button>
+        </div>
+        {field.help && <span className="text-xs text-muted">{field.help}</span>}
+      </label>
+    );
+  }
+
+  if (field.type === "combobox") {
+    return (
+      <ComboboxField
+        field={field}
+        value={displayValue}
+        onChange={onChange}
+        wrapperClass={wrapperClass}
+      />
+    );
+  }
+
   if (field.type === "textarea") {
     return (
       <label className={`grid gap-1.5 ${wrapperClass || "col-span-2"}`}>
-        <span className="text-sm font-medium text-foreground">{field.label}</span>
+        <span className="text-sm font-medium text-foreground">
+          {field.label}
+        </span>
         <textarea
           className={`${inputClass} resize-y`}
           value={displayValue}
           rows={4}
           onChange={(e) => onChange(e.target.value)}
         />
-        {field.help && (
-          <span className="text-xs text-muted">{field.help}</span>
-        )}
+        {field.help && <span className="text-xs text-muted">{field.help}</span>}
       </label>
     );
   }
@@ -47,7 +100,9 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
   if (field.type === "select") {
     return (
       <label className={`grid gap-1.5 ${wrapperClass}`}>
-        <span className="text-sm font-medium text-foreground">{field.label}</span>
+        <span className="text-sm font-medium text-foreground">
+          {field.label}
+        </span>
         <select
           className={inputClass}
           value={displayValue}
@@ -60,9 +115,7 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
             </option>
           ))}
         </select>
-        {field.help && (
-          <span className="text-xs text-muted">{field.help}</span>
-        )}
+        {field.help && <span className="text-xs text-muted">{field.help}</span>}
       </label>
     );
   }
@@ -80,9 +133,7 @@ export function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
           )
         }
       />
-      {field.help && (
-        <span className="text-xs text-muted">{field.help}</span>
-      )}
+      {field.help && <span className="text-xs text-muted">{field.help}</span>}
     </label>
   );
 }
@@ -131,16 +182,32 @@ function CheckboxesField({
     }
     setLoadingOpts(true);
     try {
-      const items = await resourceService.fetchOptions<DynamicOption>(
+      const items = await resourceService.fetchOptions<Record<string, unknown>>(
         field.optionsEndpoint,
       );
-      setOptions(items);
+      if (field.optionsMapping) {
+        const { keyField, labelField } = field.optionsMapping;
+        setOptions(
+          items.map((item) => ({
+            key: String(item[keyField] ?? ""),
+            description: String(item[labelField] ?? item[keyField] ?? ""),
+            category: "",
+          })),
+        );
+      } else {
+        setOptions(items as unknown as DynamicOption[]);
+      }
     } catch {
       // Silently fall back to empty
     } finally {
       setLoadingOpts(false);
     }
-  }, [field.optionsEndpoint, field.options, field.optionLabels]);
+  }, [
+    field.optionsEndpoint,
+    field.options,
+    field.optionLabels,
+    field.optionsMapping,
+  ]);
 
   useEffect(() => {
     loadOptions();
@@ -167,9 +234,7 @@ function CheckboxesField({
   return (
     <div className={`grid gap-1.5 ${wrapperClass || "col-span-2"}`}>
       <span className="text-sm font-medium text-foreground">{field.label}</span>
-      {field.help && (
-        <span className="text-xs text-muted">{field.help}</span>
-      )}
+      {field.help && <span className="text-xs text-muted">{field.help}</span>}
       {loadingOpts && (
         <span className="text-xs text-muted">Loading&hellip;</span>
       )}
@@ -203,9 +268,7 @@ function CheckboxesField({
           </div>
         ))}
         {!loadingOpts && options.length === 0 && (
-          <p className="px-3 py-2 text-xs text-muted">
-            No features available.
-          </p>
+          <p className="px-3 py-2 text-xs text-muted">No options available.</p>
         )}
       </div>
       {selected.size > 0 && (
@@ -214,5 +277,67 @@ function CheckboxesField({
         </p>
       )}
     </div>
+  );
+}
+
+// --- Combobox sub-component (text input with datalist suggestions) ---
+
+function ComboboxField({
+  field,
+  value,
+  onChange,
+  wrapperClass,
+}: {
+  field: ResourceField;
+  value: string;
+  onChange: (value: unknown) => void;
+  wrapperClass: string;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const listId = `combobox-${field.name}`;
+
+  const loadSuggestions = useCallback(async () => {
+    const endpoint = field.suggestionsEndpoint;
+    if (!endpoint) {
+      setSuggestions(field.options ?? []);
+      return;
+    }
+    try {
+      const items =
+        await resourceService.fetchOptions<Record<string, unknown>>(endpoint);
+      const extractField = field.suggestionsField ?? "category";
+      const unique = [
+        ...new Set(
+          items.map((item) => String(item[extractField] ?? "")).filter(Boolean),
+        ),
+      ];
+      setSuggestions(unique);
+    } catch {
+      // silent
+    }
+  }, [field.suggestionsEndpoint, field.suggestionsField, field.options]);
+
+  useEffect(() => {
+    loadSuggestions();
+  }, [loadSuggestions]);
+
+  return (
+    <label className={`grid gap-1.5 ${wrapperClass}`}>
+      <span className="text-sm font-medium text-foreground">{field.label}</span>
+      <input
+        type="text"
+        className={inputClass}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        list={listId}
+        placeholder={field.help || "Type or select..."}
+      />
+      <datalist id={listId}>
+        {suggestions.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+      {field.help && <span className="text-xs text-muted">{field.help}</span>}
+    </label>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { cmsBlockTemplateService } from "@/services/cms-service";
+import { slugify } from "@/lib/slugify";
 import type {
   BlockTemplate,
   ContentFieldDefinition,
@@ -378,101 +379,113 @@ export default function BlockTemplatesPage() {
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <div className="grid grid-cols-2 gap-4">
-          <label>
-            <span className="text-sm font-medium text-[var(--theme-text)]">
-              Name
-            </span>
-            <input
-              className={inputClass}
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Hero Banner"
-            />
-          </label>
-          <label>
-            <span className="text-sm font-medium text-[var(--theme-text)]">
-              Slug
-            </span>
-            <input
-              className={inputClass}
-              value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: e.target.value })}
-              placeholder="hero-banner"
-            />
-          </label>
-          <label>
-            <span className="text-sm font-medium text-[var(--theme-text)]">
-              Category
-            </span>
-            <select
-              className={inputClass}
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c.charAt(0).toUpperCase() + c.slice(1)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="text-sm font-medium text-[var(--theme-text)]">
-              Icon (Lucide name)
-            </span>
-            <input
-              className={inputClass}
-              value={form.icon}
-              onChange={(e) => setForm({ ...form, icon: e.target.value })}
-              placeholder="layout-template"
-            />
-          </label>
-          <label className="col-span-2">
-            <span className="text-sm font-medium text-[var(--theme-text)]">
-              Description
-            </span>
-            <textarea
-              rows={2}
-              className={inputClass}
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            <span className="text-sm font-medium text-[var(--theme-text)]">
-              Status
-            </span>
-            <select
-              className={inputClass}
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </label>
-          <label>
-            <span className="text-sm font-medium text-[var(--theme-text)]">
-              Sort Order
-            </span>
-            <input
-              type="number"
-              className={inputClass}
-              value={form.sortOrder}
-              onChange={(e) =>
-                setForm({ ...form, sortOrder: Number(e.target.value) })
-              }
-            />
-          </label>
+        <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg,var(--theme-background))] p-6 shadow-sm">
+          <h3 className="mb-4 text-sm font-semibold text-[var(--theme-muted)] uppercase tracking-wide">
+            Template Details
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <label>
+              <span className="text-sm font-medium text-[var(--theme-text)]">
+                Name
+              </span>
+              <input
+                className={inputClass}
+                value={form.name}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  const patch = { ...form, name };
+                  if (!form.slug || form.slug === slugify(form.name)) {
+                    patch.slug = slugify(name);
+                  }
+                  setForm(patch);
+                }}
+                placeholder="Hero Banner"
+              />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-[var(--theme-text)]">
+                Slug
+              </span>
+              <input
+                className={inputClass}
+                value={form.slug}
+                onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                placeholder={form.name ? slugify(form.name) : "hero-banner"}
+              />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-[var(--theme-text)]">
+                Category
+              </span>
+              <select
+                className={inputClass}
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c.charAt(0).toUpperCase() + c.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="text-sm font-medium text-[var(--theme-text)]">
+                Icon (Lucide name)
+              </span>
+              <input
+                className={inputClass}
+                value={form.icon}
+                onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                placeholder="layout-template"
+              />
+            </label>
+            <label className="col-span-2">
+              <span className="text-sm font-medium text-[var(--theme-text)]">
+                Description
+              </span>
+              <textarea
+                rows={2}
+                className={inputClass}
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-[var(--theme-text)]">
+                Status
+              </span>
+              <select
+                className={inputClass}
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </label>
+            <label>
+              <span className="text-sm font-medium text-[var(--theme-text)]">
+                Sort Order
+              </span>
+              <input
+                type="number"
+                className={inputClass}
+                value={form.sortOrder}
+                onChange={(e) =>
+                  setForm({ ...form, sortOrder: Number(e.target.value) })
+                }
+              />
+            </label>
+          </div>
         </div>
 
-        <div>
-          <h2 className="text-lg font-semibold mb-3 text-[var(--theme-text)]">
+        <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg,var(--theme-background))] p-6 shadow-sm">
+          <h3 className="mb-1 text-sm font-semibold text-[var(--theme-muted)] uppercase tracking-wide">
             Fields
-          </h2>
+          </h3>
           <p className="text-sm text-[var(--theme-muted)] mb-4">
             Define the fields editors will fill in when using this block on a
             page.

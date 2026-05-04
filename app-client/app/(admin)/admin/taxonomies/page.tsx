@@ -5,9 +5,32 @@ import type { ResourceField, ResourceItem } from "@/types";
 
 const taxonomyFields: ResourceField[] = [
   { name: "name", label: "Name", type: "text" },
-  { name: "slug", label: "Slug", type: "text" },
+  {
+    name: "slug",
+    label: "Slug",
+    type: "slug",
+    slugSource: "name",
+    help: "URL-friendly identifier.",
+  },
   { name: "pluralName", label: "Plural Name", type: "text" },
   { name: "description", label: "Description", type: "textarea" },
+  {
+    name: "hierarchical",
+    label: "Hierarchical",
+    type: "select",
+    options: ["false", "true"],
+    optionLabels: { false: "Flat (tags)", true: "Hierarchical (categories)" },
+    help: "Allow nested terms (parent/child).",
+  },
+  {
+    name: "contentTypes",
+    label: "Content Types",
+    type: "checkboxes",
+    optionsEndpoint: "/api/cms/content-types",
+    optionsMapping: { keyField: "slug", labelField: "name" },
+    help: "Select which content types this taxonomy applies to.",
+    section: "Details",
+  },
   {
     name: "status",
     label: "Status",
@@ -22,6 +45,8 @@ const emptyTaxonomy: ResourceItem = {
   slug: "",
   pluralName: "",
   description: "",
+  hierarchical: "false",
+  contentTypes: [],
   status: "active",
   sortOrder: 0,
 };

@@ -7,7 +7,9 @@ export type FieldType =
   | "number"
   | "date"
   | "select"
-  | "checkboxes";
+  | "checkboxes"
+  | "slug"
+  | "combobox";
 
 export type EditorSection = "Basics" | "Content" | "Details";
 
@@ -22,6 +24,14 @@ export type ResourceField = {
   fullWidth?: boolean;
   /** URL to load options dynamically (for checkboxes). Response: { ok, data: { items: [{ key, description, category }] } } */
   optionsEndpoint?: string;
+  /** For "slug" fields: name of the source field to auto-generate from. */
+  slugSource?: string;
+  /** For "combobox" fields: URL to load suggestions. Response: { ok, data: { items: [...] } } */
+  suggestionsEndpoint?: string;
+  /** For "combobox" fields: which field from the API response to extract as suggestion values. */
+  suggestionsField?: string;
+  /** For "checkboxes" with optionsEndpoint: map response objects to DynamicOption shape. */
+  optionsMapping?: { keyField: string; labelField: string };
 };
 
 export type ResourceItem = Record<string, unknown> & {
@@ -33,6 +43,7 @@ export type FieldRendererProps = {
   field: ResourceField;
   value: unknown;
   onChange: (value: unknown) => void;
+  allValues?: ResourceItem;
 };
 
 export type DynamicOption = {

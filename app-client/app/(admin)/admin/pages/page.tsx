@@ -8,6 +8,7 @@ import {
   cmsPageService,
   cmsBlockTemplateService,
 } from "@/services/cms-service";
+import { slugify } from "@/lib/slugify";
 import type { CmsPage, FlexibleBlock, BlockTemplate } from "@/types";
 
 const swrKey = "/api/cms/pages";
@@ -38,6 +39,7 @@ export default function PagesAdminPage() {
     fetchTemplates,
   );
   const [editing, setEditing] = useState<CmsPage | null>(null);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(emptyPage);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -45,6 +47,7 @@ export default function PagesAdminPage() {
 
   function openNew() {
     setEditing(null);
+    setCreating(true);
     setForm({ ...emptyPage, blocks: [] });
     setError("");
     setPreview(false);
@@ -52,6 +55,7 @@ export default function PagesAdminPage() {
 
   function openEdit(page: CmsPage) {
     setEditing(page);
+    setCreating(false);
     setForm({
       title: page.title,
       slug: page.slug,
@@ -75,6 +79,7 @@ export default function PagesAdminPage() {
       }
       await mutate();
       setEditing(null);
+      setCreating(false);
       setForm({ ...emptyPage, blocks: [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed.");
@@ -97,7 +102,7 @@ export default function PagesAdminPage() {
     "w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-surface)] px-3 py-1.5 text-sm";
 
   // If editing or creating, show the page builder form
-  if (editing !== null || form.title !== "" || form.blocks.length > 0) {
+  if (editing !== null || creating) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -117,6 +122,7 @@ export default function PagesAdminPage() {
               className="rounded-md border border-[var(--theme-border)] px-4 py-1.5 text-sm hover:bg-[var(--theme-surface)]"
               onClick={() => {
                 setEditing(null);
+                setCreating(false);
                 setForm({ ...emptyPage, blocks: [] });
               }}
             >
@@ -141,74 +147,99 @@ export default function PagesAdminPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4">
-              <label>
-                <span className="text-sm font-medium text-[var(--theme-text)]">
-                  Title
-                </span>
-                <input
-                  className={inputClass}
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                />
-              </label>
-              <label>
-                <span className="text-sm font-medium text-[var(--theme-text)]">
-                  Slug
-                </span>
-                <input
-                  className={inputClass}
-                  value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                />
-              </label>
-              <label>
-                <span className="text-sm font-medium text-[var(--theme-text)]">
-                  Status
-                </span>
-                <select
-                  className={inputClass}
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                </select>
-              </label>
-              <label>
-                <span className="text-sm font-medium text-[var(--theme-text)]">
-                  SEO Title
-                </span>
-                <input
-                  className={inputClass}
-                  value={form.seoTitle}
-                  onChange={(e) =>
-                    setForm({ ...form, seoTitle: e.target.value })
-                  }
-                />
-              </label>
-              <label className="col-span-2">
-                <span className="text-sm font-medium text-[var(--theme-text)]">
-                  SEO Description
-                </span>
-                <textarea
-                  rows={2}
-                  className={inputClass}
-                  value={form.seoDescription}
-                  onChange={(e) =>
-                    setForm({ ...form, seoDescription: e.target.value })
-                  }
-                />
-              </label>
+            <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg,var(--theme-background))] p-6 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-[var(--theme-muted)] uppercase tracking-wide">
+                Page Details
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <label>
+                  <span className="text-sm font-medium text-[var(--theme-text)]">
+                    Title
+                  </span>
+                  <input
+                    className={inputClass}
+                    value={form.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      const patch: typeof form = { ...form, title };
+                      if (!form.slug || form.slug === slugify(form.title)) {
+                        patch.slug = slugify(title);
+                      }
+                      setForm(patch);
+                    }}
+                  />
+                </label>
+                <label>
+                  <span className="text-sm font-medium text-[var(--theme-text)]">
+                    Slug
+                  </span>
+                  <input
+                    className={inputClass}
+                    value={form.slug}
+                    onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                    placeholder={form.title ? slugify(form.title) : "page-slug"}
+                  />
+                </label>
+                <label>
+                  <span className="text-sm font-medium text-[var(--theme-text)]">
+                    Status
+                  </span>
+                  <select
+                    className={inputClass}
+                    value={form.status}
+                    onChange={(e) =>
+                      setForm({ ...form, status: e.target.value })
+                    }
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                  </select>
+                </label>
+              </div>
             </div>
 
-            <h2 className="text-lg font-semibold text-[var(--theme-text)]">
-              Page Blocks
-            </h2>
-            <PageBuilder
-              value={form.blocks}
-              onChange={(blocks) => setForm({ ...form, blocks })}
-            />
+            <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg,var(--theme-background))] p-6 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-[var(--theme-muted)] uppercase tracking-wide">
+                SEO
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <label>
+                  <span className="text-sm font-medium text-[var(--theme-text)]">
+                    SEO Title
+                  </span>
+                  <input
+                    className={inputClass}
+                    value={form.seoTitle}
+                    onChange={(e) =>
+                      setForm({ ...form, seoTitle: e.target.value })
+                    }
+                  />
+                </label>
+                <label className="col-span-2">
+                  <span className="text-sm font-medium text-[var(--theme-text)]">
+                    SEO Description
+                  </span>
+                  <textarea
+                    rows={2}
+                    className={inputClass}
+                    value={form.seoDescription}
+                    onChange={(e) =>
+                      setForm({ ...form, seoDescription: e.target.value })
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg,var(--theme-background))] p-6 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-[var(--theme-muted)] uppercase tracking-wide">
+                Page Blocks
+              </h3>
+              <PageBuilder
+                value={form.blocks}
+                onChange={(blocks) => setForm({ ...form, blocks })}
+              />
+            </div>
           </>
         )}
       </div>

@@ -1,15 +1,22 @@
 import Link from "next/link";
-import type { ContentItem } from "@/types";
+import { mediaUrl } from "@/lib/media-url";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:7001";
 
-async function getItems(typeSlug: string): Promise<ContentItem[]> {
+type FlatItem = Record<string, unknown> & {
+  id: string;
+  title: string;
+  slug: string;
+};
+
+async function getItems(typeSlug: string): Promise<FlatItem[]> {
   const res = await fetch(`${API_URL}/api/cms/public/content/${typeSlug}`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) return [];
   const json = await res.json();
-  return json.data?.items ?? [];
+  // API returns { data: { contentType, items } } where items are already flattened
+  return (json.data?.items as FlatItem[]) ?? [];
 }
 
 export async function generateMetadata({
@@ -45,19 +52,38 @@ export default async function ContentListPage({
       )}
       <div className="space-y-4">
         {items.map((item) => {
-          const data = (item.data ?? {}) as Record<string, unknown>;
+          const excerpt = item.excerpt as string | undefined;
+          const featuredImage = item.featuredImage as string | undefined;
+          const author = item.author as string | undefined;
           return (
             <Link
               key={item.id}
               href={`/${typeSlug}/${item.slug}`}
-              className="block rounded-lg border border-[var(--theme-border)] bg-[var(--theme-surface)] p-6 hover:border-[var(--theme-primary)] transition-colors"
+              className="flex gap-4 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-surface)] p-6 hover:border-[var(--theme-primary)] transition-colors"
             >
-              <h2 className="text-xl font-semibold text-[var(--theme-text)]">
-                {item.title}
-              </h2>
-              {typeof data.excerpt === "string" && (
-                <p className="mt-1 text-[var(--theme-muted)]">{data.excerpt}</p>
+              {featuredImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={mediaUrl(featuredImage)}
+                  alt=""
+                  className="h-24 w-24 shrink-0 rounded-md object-cover"
+                />
               )}
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold text-[var(--theme-text)]">
+                  {item.title}
+                </h2>
+                {author && (
+                  <p className="mt-0.5 text-xs text-[var(--theme-muted)]">
+                    By {author}
+                  </p>
+                )}
+                {excerpt && (
+                  <p className="mt-1 line-clamp-2 text-[var(--theme-muted)]">
+                    {excerpt}
+                  </p>
+                )}
+              </div>
             </Link>
           );
         })}
