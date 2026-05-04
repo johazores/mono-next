@@ -99,7 +99,7 @@ export async function mediaFileController(
   }
 
   const id = String(req.query.id || "");
-  const item = await mediaService.getFileById(id);
+  const item = await mediaService.getById(id);
 
   if (!item || !item.base64Data) {
     return sendError(res, "File not found.", 404);

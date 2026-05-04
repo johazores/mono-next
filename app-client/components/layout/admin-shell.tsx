@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
+import useSWR from "swr";
 import { authService } from "@/services/auth-service";
 import { useSiteConfig } from "@/components/providers/site-config-provider";
-import type { AuthUser } from "@/types";
+import { swrListFetcher } from "@/lib/swr";
+import type { AuthUser, ContentType } from "@/types";
 import {
   LayoutDashboard,
   Users,
@@ -24,22 +26,38 @@ import {
   Tags,
   Image,
   LayoutTemplate,
+  ChevronDown,
+  ChevronRight,
+  FileBox,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type AdminNavItem = { label: string; href: string; icon: LucideIcon };
 
-const navigation: AdminNavItem[] = [
+const coreNav: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Admins", href: "/admin/admins", icon: ShieldCheck },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Features", href: "/admin/features", icon: ToggleRight },
+];
+
+const cmsNav: AdminNavItem[] = [
   { label: "Pages", href: "/admin/pages", icon: FileText },
-  { label: "Blocks", href: "/admin/block-templates", icon: LayoutTemplate },
-  { label: "Content", href: "/admin/content-types", icon: Layers },
-  { label: "Taxonomies", href: "/admin/taxonomies", icon: Tags },
+  {
+    label: "Block Templates",
+    href: "/admin/block-templates",
+    icon: LayoutTemplate,
+  },
   { label: "Media", href: "/admin/media", icon: Image },
+];
+
+const cmsAdminNav: AdminNavItem[] = [
+  { label: "Content Types", href: "/admin/content-types", icon: Layers },
+  { label: "Taxonomies", href: "/admin/taxonomies", icon: Tags },
+];
+
+const bottomNav: AdminNavItem[] = [
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },
   { label: "Activity", href: "/admin/activity", icon: Activity },
   { label: "Settings", href: "/admin/settings", icon: Settings },
@@ -57,6 +75,19 @@ export function AdminShell({
   const router = useRouter();
   const { title, logo } = useSiteConfig();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cmsOpen, setCmsOpen] = useState(
+    pathname.startsWith("/admin/pages") ||
+      pathname.startsWith("/admin/block-templates") ||
+      pathname.startsWith("/admin/media") ||
+      pathname.startsWith("/admin/content"),
+  );
+
+  const { data: contentTypes = [] } = useSWR<ContentType[]>(
+    "/api/cms/content-types",
+    swrListFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
+  const activeTypes = contentTypes.filter((ct) => ct.status === "active");
 
   async function handleLogout() {
     await authService.logout();
@@ -70,6 +101,41 @@ export function AdminShell({
     .slice(0, 2)
     .toUpperCase();
 
+  function NavLink({ item }: { item: AdminNavItem }) {
+    const Icon = item.icon;
+    const active =
+      item.href === "/admin"
+        ? pathname === "/admin"
+        : pathname.startsWith(item.href);
+    return (
+      <li>
+        <Link
+          href={item.href}
+          onClick={() => setMobileOpen(false)}
+          className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+            active
+              ? "bg-primary text-white shadow-sm"
+              : "text-muted hover:bg-surface hover:text-foreground"
+          }`}
+        >
+          <Icon
+            size={18}
+            className={
+              active ? "text-white" : "text-muted group-hover:text-foreground"
+            }
+          />
+          {item.label}
+        </Link>
+      </li>
+    );
+  }
+
+  const isCmsActive =
+    pathname.startsWith("/admin/pages") ||
+    pathname.startsWith("/admin/block-templates") ||
+    pathname.startsWith("/admin/media") ||
+    pathname.startsWith("/admin/content");
+
   const sidebar = (
     <>
       <div className="flex items-center gap-3 px-5 py-6">
@@ -82,42 +148,94 @@ export function AdminShell({
         )}
       </div>
 
-      <p className="mb-2 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted">
-        Navigation
-      </p>
-
-      <nav className="flex-1 px-3">
+      <nav className="flex-1 overflow-y-auto px-3">
+        <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
+          General
+        </p>
         <ul className="grid gap-0.5">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const active =
-              item.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(item.href);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
-                    active
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-muted hover:bg-surface hover:text-foreground"
-                  }`}
-                >
-                  <Icon
-                    size={18}
-                    className={
-                      active
-                        ? "text-white"
-                        : "text-muted group-hover:text-foreground"
-                    }
-                  />
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
+          {coreNav.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
+        </ul>
+
+        {/* CMS section with collapsible content types */}
+        <p className="mb-1 mt-5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
+          CMS
+        </p>
+        <ul className="grid gap-0.5">
+          {cmsNav.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
+
+          {/* Dynamic content types as sub-items */}
+          {activeTypes.length > 0 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setCmsOpen((o) => !o)}
+                className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                  isCmsActive && !cmsOpen
+                    ? "text-primary"
+                    : "text-muted hover:bg-surface hover:text-foreground"
+                }`}
+              >
+                <Layers
+                  size={18}
+                  className="text-muted group-hover:text-foreground"
+                />
+                <span className="flex-1 text-left">Content</span>
+                {cmsOpen ? (
+                  <ChevronDown size={14} className="text-muted" />
+                ) : (
+                  <ChevronRight size={14} className="text-muted" />
+                )}
+              </button>
+              {cmsOpen && (
+                <ul className="ml-5 mt-0.5 grid gap-0.5 border-l border-border pl-3">
+                  {activeTypes.map((ct) => {
+                    const href = `/admin/content/${ct.slug}`;
+                    const active = pathname === href;
+                    return (
+                      <li key={ct.slug}>
+                        <Link
+                          href={href}
+                          onClick={() => setMobileOpen(false)}
+                          className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all duration-150 ${
+                            active
+                              ? "bg-primary text-white shadow-sm"
+                              : "text-muted hover:bg-surface hover:text-foreground"
+                          }`}
+                        >
+                          <FileBox
+                            size={15}
+                            className={
+                              active
+                                ? "text-white"
+                                : "text-muted group-hover:text-foreground"
+                            }
+                          />
+                          {ct.pluralName || ct.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </li>
+          )}
+
+          {cmsAdminNav.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
+        </ul>
+
+        <p className="mb-1 mt-5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
+          System
+        </p>
+        <ul className="grid gap-0.5">
+          {bottomNav.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
         </ul>
       </nav>
 
