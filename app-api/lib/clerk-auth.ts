@@ -1,11 +1,6 @@
 import type { NextApiRequest } from "next";
 import { settingService } from "@/services/setting-service";
-
-type ClerkJwtPayload = {
-  sub: string;
-  email?: string;
-  name?: string;
-};
+import type { ClerkJwtPayload } from "@/types";
 
 /**
  * Verify a Clerk JWT from the Authorization header.

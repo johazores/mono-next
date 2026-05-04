@@ -1,6 +1,5 @@
 import { apiGet, apiPut } from "./api-client";
-
-type SettingItem = { key: string; value: unknown };
+import type { SettingItem } from "@/types";
 
 export const adminSettingService = {
   async getAll() {

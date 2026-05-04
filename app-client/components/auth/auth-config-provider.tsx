@@ -10,14 +10,11 @@ import {
 import { ClerkProvider, useAuth } from "@clerk/react";
 import { settingService } from "@/services/setting-service";
 import { setTokenGetter } from "@/services/api-client";
-import type { AuthProvider, PublicAuthConfig } from "@/types";
-
-type AuthConfigContextValue = {
-  provider: AuthProvider;
-  clerkPublishableKey: string;
-  ready: boolean;
-  getToken: () => Promise<string | null>;
-};
+import type {
+  AuthProvider,
+  PublicAuthConfig,
+  AuthConfigContextValue,
+} from "@/types";
 
 const AuthConfigContext = createContext<AuthConfigContextValue>({
   provider: "credentials",

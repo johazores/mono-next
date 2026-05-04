@@ -8,17 +8,7 @@ import {
   useEffect,
 } from "react";
 import type { ReactNode } from "react";
-import type { CartItem, Product } from "@/types";
-
-type CartContextValue = {
-  items: CartItem[];
-  addItem: (product: Product) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
-  itemCount: number;
-  total: number;
-};
+import type { CartItem, Product, CartContextValue } from "@/types";
 
 const CartContext = createContext<CartContextValue | null>(null);
 

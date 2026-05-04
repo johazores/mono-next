@@ -1,37 +1,16 @@
 import { getPaymentConfig } from "@/lib/payment";
 import type {
+  StripeProductResponse,
+  StripePriceResponse,
+  StripeList,
+} from "@/lib/payment/types";
+import type {
   StripeProductListResult,
   StripeProductDetailResult,
   StripePriceLookup,
 } from "@/types";
 
 const STRIPE_API = "https://api.stripe.com/v1";
-
-/* ------------------------------------------------------------------ */
-/* Internal Stripe API response shapes (not domain types)              */
-/* ------------------------------------------------------------------ */
-
-type StripeProductResponse = {
-  id: string;
-  name: string;
-  description: string | null;
-  images: string[];
-  active: boolean;
-  metadata: Record<string, unknown>;
-};
-
-type StripePriceResponse = {
-  id: string;
-  unit_amount: number | null;
-  currency: string;
-  recurring: { interval: string } | null;
-  nickname: string | null;
-  type: string;
-  active: boolean;
-  product: string;
-};
-
-type StripeList<T> = { data: T[] };
 
 async function stripeGet<T>(path: string, secretKey: string): Promise<T> {
   const res = await fetch(`${STRIPE_API}${path}`, {

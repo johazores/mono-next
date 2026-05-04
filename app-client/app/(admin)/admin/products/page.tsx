@@ -2,8 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { ResourceManager } from "@/components/admin";
-import { apiGet, apiPost, apiDelete } from "@/services/api-client";
-import type { ResourceField, ResourceItem } from "@/types";
+import { productService } from "@/services/product-service";
+import type {
+  ResourceField,
+  ResourceItem,
+  ProductPrice,
+  StripeProduct,
+  StripePrice,
+  BrowseStep,
+} from "@/types";
 
 // ---------------------------------------------------------------------------
 // Product fields (used by generic ResourceEditor)
@@ -67,38 +74,6 @@ const emptyProduct: ResourceItem = {
 // Stripe product/price browser — fully dynamic, no hardcoded values
 // ---------------------------------------------------------------------------
 
-type ProductPrice = {
-  id: string;
-  label: string;
-  stripePriceId: string;
-  stripeProductId?: string;
-  mode: "test" | "live";
-  amount: number;
-  currency: string;
-  interval: string | null;
-  startDate: string;
-  endDate: string | null;
-  isDefault: boolean;
-};
-
-type StripeProduct = {
-  id: string;
-  name: string;
-  description: string | null;
-  images: string[];
-};
-
-type StripePrice = {
-  id: string;
-  amount: number;
-  currency: string;
-  interval: string | null;
-  nickname: string | null;
-  type: string;
-};
-
-type BrowseStep = "idle" | "products" | "prices";
-
 function isActive(price: ProductPrice): boolean {
   const now = new Date();
   if (new Date(price.startDate) > now) return false;
@@ -140,18 +115,17 @@ function ProductPricesEditor({
   const [searchQuery, setSearchQuery] = useState("");
   const [localCounter, setLocalCounter] = useState(0);
 
-  const endpoint = productId ? `/api/products/${productId}/prices` : "";
-
   // Load existing prices for saved products
   useEffect(() => {
     if (!productId) return;
-    apiGet<{ items: ProductPrice[] }>(endpoint)
+    productService
+      .listPrices(productId)
       .then((res) => {
         if (res.ok && res.data) setPrices(res.data.items);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [endpoint, productId]);
+  }, [productId]);
 
   // --- Step 1: Load Stripe products ---
   async function openBrowser() {
@@ -160,10 +134,7 @@ function ProductPricesEditor({
     setMessage("");
     setSearchQuery("");
     try {
-      const res = await apiGet<{
-        items: StripeProduct[];
-        mode: "test" | "live";
-      }>("/api/stripe/products");
+      const res = await productService.listStripeProducts();
       if (res.ok && res.data) {
         setStripeProducts(res.data.items);
         setStripeMode(res.data.mode);
@@ -188,11 +159,7 @@ function ProductPricesEditor({
     setFetching(true);
     setMessage("");
     try {
-      const res = await apiGet<{
-        product: StripeProduct;
-        prices: StripePrice[];
-        mode: "test" | "live";
-      }>(`/api/stripe/products/${encodeURIComponent(product.id)}`);
+      const res = await productService.getStripeProduct(product.id);
       if (res.ok && res.data) {
         setStripePrices(res.data.prices);
         setStripeMode(res.data.mode);
@@ -265,7 +232,7 @@ function ProductPricesEditor({
     // API mode
     setSaving(true);
     try {
-      const result = await apiPost<ProductPrice>(endpoint, {
+      const result = await productService.createPrice(productId!, {
         label: newPrice.label,
         stripePriceId: newPrice.stripePriceId,
         stripeProductId: newPrice.stripeProductId,
@@ -296,7 +263,7 @@ function ProductPricesEditor({
       return;
     }
     try {
-      await apiDelete(`${endpoint}/${id}`);
+      await productService.deletePrice(productId!, id);
       setPrices((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to delete.");

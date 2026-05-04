@@ -7,6 +7,8 @@ import type {
   BillingPortalResult,
   StripeSubscription,
   StripeInvoice,
+  StripeSession,
+  StripeLineItem,
 } from "./types";
 
 const STRIPE_API = "https://api.stripe.com/v1";
@@ -42,22 +44,6 @@ async function stripeRequest<T>(
 
   return json as T;
 }
-
-type StripeSession = {
-  id: string;
-  url: string;
-  payment_status: "paid" | "unpaid" | "no_payment_required";
-  customer: string | null;
-  customer_email: string | null;
-  customer_details?: { email: string | null; name: string | null };
-  subscription: string | null;
-  payment_intent: string | null;
-  metadata: Record<string, string>;
-};
-
-type StripeLineItem = {
-  data: { price: { id: string }; quantity: number }[];
-};
 
 export const stripeProvider: PaymentProviderInterface = {
   async createCheckoutSession(

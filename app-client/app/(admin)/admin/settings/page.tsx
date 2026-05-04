@@ -2,24 +2,12 @@
 
 import { useState, useEffect, type FormEvent } from "react";
 import { adminSettingService } from "@/services/admin-setting-service";
-import type { AuthProvider } from "@/types";
-
-type PaymentMode = "test" | "live";
-
-type AuthSettings = {
-  provider: AuthProvider;
-  clerkPublishableKey: string;
-  clerkSecretKey: string;
-};
-
-type PaymentSettings = {
-  provider: string;
-  mode: PaymentMode;
-  stripeTestPublicKey: string;
-  stripeTestSecretKey: string;
-  stripeLivePublicKey: string;
-  stripeLiveSecretKey: string;
-};
+import type {
+  AuthProvider,
+  PaymentMode,
+  AuthSettings,
+  PaymentSettings,
+} from "@/types";
 
 export default function SettingsPage() {
   const [auth, setAuth] = useState<AuthSettings>({

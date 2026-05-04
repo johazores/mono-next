@@ -1,4 +1,10 @@
-export type { Role, AccountStatus, AuthUser, AuthSession } from "./auth";
+export type {
+  Role,
+  AccountStatus,
+  AuthUser,
+  AuthSession,
+  ClerkJwtPayload,
+} from "./auth";
 export type {
   AdminRecord,
   CreateAdminInput,

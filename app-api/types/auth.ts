@@ -1,6 +1,12 @@
 export type Role = "admin" | "editor";
 export type AccountStatus = "active" | "disabled";
 
+export type ClerkJwtPayload = {
+  sub: string;
+  email?: string;
+  name?: string;
+};
+
 export type AuthUser = {
   id: string;
   name: string;

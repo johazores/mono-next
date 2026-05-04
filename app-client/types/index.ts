@@ -18,7 +18,12 @@ export type {
   ModalProps,
   NavItem,
 } from "./ui";
-export type { FeaturesState, AdminResourceState } from "./hooks";
+export type {
+  FeaturesState,
+  AdminResourceState,
+  AuthConfigContextValue,
+  CartContextValue,
+} from "./hooks";
 export type { AuthUser, UpdateAdminProfileInput } from "./auth";
 export type { AppUser, UpdateUserProfileInput } from "./user";
 export type {
@@ -27,7 +32,15 @@ export type {
   CreateSubUserResult,
 } from "./sub-user";
 export type { FeatureFlag } from "./feature";
-export type { Product, ProductType, PaymentModel } from "./product";
+export type {
+  Product,
+  ProductType,
+  PaymentModel,
+  ProductPrice,
+  StripeProduct,
+  StripePrice,
+  BrowseStep,
+} from "./product";
 export type { Purchase } from "./purchase";
 export type {
   ProductBreakdown,
@@ -36,7 +49,14 @@ export type {
   ReportPeriod,
 } from "./report";
 export type { ActivityLogEntry, ActivityLogList } from "./activity-log";
-export type { AuthProvider, PublicAuthConfig } from "./setting";
+export type {
+  AuthProvider,
+  PublicAuthConfig,
+  SettingItem,
+  PaymentMode,
+  AuthSettings,
+  PaymentSettings,
+} from "./setting";
 export type {
   CartItem,
   CheckoutRequest,
